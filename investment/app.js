@@ -13,7 +13,7 @@ const money = (x, ccy="HKD") => Number.isFinite(x) ? `${x<0?"(":""}${ccy==="HKD"
 const number = (x, decimals=0) => Number.isFinite(x) ? new Intl.NumberFormat("en-HK",{minimumFractionDigits:decimals,maximumFractionDigits:decimals}).format(x) : "—";
 const percent = x => Number.isFinite(x) ? new Intl.NumberFormat("en-HK",{style:"percent",maximumFractionDigits:2,minimumFractionDigits:1}).format(x) : "—";
 const signClass = x => Number.isFinite(x) ? (x < 0 ? "negative" : x > 0 ? "positive" : "") : "";
-let tokenClient, token, data, activeTab="overview", epoch=0;
+let tokenClient, token, data, latestRaw, activeTab="overview", epoch=0;
 
 $("connect").addEventListener("click", connect);
 $("refresh").addEventListener("click", () => token ? load() : connect());
@@ -22,6 +22,31 @@ document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () =>
 document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => showTab(b.dataset.go)));
 for(const id of ["trade-asset","trade-search"]) $(id).addEventListener(id.endsWith("search")?"input":"change", renderTrades);
 for(const id of ["cash-type","cash-search"]) $(id).addEventListener(id.endsWith("search")?"input":"change", renderCash);
+$("pnl-period").addEventListener("change", renderPnL);
+$("open-snapshot").addEventListener("click", async()=>{
+  $("snapshot-error").textContent="";
+  try {
+    const result=await Snapshot.unlock($("snapshot-open-key").value.trim());
+    data=PortfolioModel.parse(result.raw);
+    if(!data.positions.length) throw new Error("Saved snapshot has no positions.");
+    $("snapshot-open-key").value="";
+    $("setup").hidden=true; $("app").hidden=false; $("disconnect").hidden=false;
+    $("snapshot-banner").hidden=false;
+    $("snapshot-date").textContent="Saved "+new Intl.DateTimeFormat("en-GB",{dateStyle:"medium",timeStyle:"short",timeZone:"Asia/Hong_Kong"}).format(new Date(result.createdAt))+" HKT · data may be out of date";
+    $("sync-status").textContent="Saved snapshot";
+    render();
+  } catch(e) { $("snapshot-error").textContent=e.name==="OperationError"?"Incorrect recovery key.":e.message; }
+});
+$("save-snapshot").addEventListener("click",()=>publishSnapshot());
+
+async function publishSnapshot() {
+  if(!latestRaw) return $("snapshot-save-status").textContent="Connect Google first to load current data.";
+  $("snapshot-save-status").textContent="Encrypting and updating GitHub…";
+  try {
+    await Snapshot.publish(latestRaw,$("snapshot-save-key").value.trim(),$("snapshot-token").value.trim());
+    $("snapshot-save-status").textContent="Encrypted snapshot updated in GitHub.";
+  } catch(e) { $("snapshot-save-status").textContent=e.message||"Snapshot update failed."; }
+}
 
 function setError(message) { $("connect-error").textContent = message; }
 function connect() {
@@ -59,11 +84,12 @@ async function load() {
     if (current!==epoch) return;
     const next = PortfolioModel.parse(portfolio);
     if (!next.positions.length || !Number.isFinite(next.metrics.totalHKD)) throw new Error("The brokerage sheet did not return its expected position and dashboard data.");
-    data=next;
+    data=next; latestRaw=portfolio;
     $("setup").hidden=true; $("app").hidden=false;
     $("refresh").hidden=false; $("disconnect").hidden=false;
     $("sync-status").textContent="Refreshed "+new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Hong_Kong",hour:"2-digit",minute:"2-digit"}).format(new Date())+" HKT";
     render();
+    if($("snapshot-save-key").value&&$("snapshot-token").value) await publishSnapshot();
   } catch(e) {
     if (current!==epoch) return;
     const message=e.message || "Could not load the sheets.";
@@ -75,7 +101,7 @@ async function load() {
 
 function disconnect() {
   const old=token;
-  ++epoch; token=undefined; data=undefined;
+  ++epoch; token=undefined; data=undefined; latestRaw=undefined;
   const finish=()=>location.reload();
   if(old && window.google?.accounts?.oauth2) google.accounts.oauth2.revoke(old,finish);
   setTimeout(finish,1200);
@@ -110,8 +136,22 @@ function renderAllocation() {
 }
 function renderPnL() {
   const m=data.metrics;
-  const items=[["Realized stock P/L · 2026",m.realizedHKD],["Unrealized position P/L · current",m.unrealizedHKD],["Dividends · 2026",m.dividendsHKD],["Interest · 2026",m.interestHKD],["Withholding tax · 2026",m.taxHKD]];
-  $("pnl-breakdown").innerHTML=items.map(([label,val])=>`<div class="pnl-row"><span>${esc(label)}</span><strong class="${signClass(val)}">${money(val)}</strong></div>`).join("");
+  const picker=$("pnl-period"), previous=picker.value;
+  picker.innerHTML='<option value="all">2026 + current positions</option>'+data.months.map(x=>`<option value="${esc(x.month)}">${esc(x.month)}</option>`).join("");
+  picker.value=[...picker.options].some(x=>x.value===previous)?previous:"all";
+  let items,note;
+  if(picker.value==="all") {
+    items=[["Realized stock P/L · 2026",m.realizedHKD],["Unrealized position P/L · current",m.unrealizedHKD],["Dividends · 2026",m.dividendsHKD],["Interest · 2026",m.interestHKD],["Withholding tax · 2026",m.taxHKD]];
+    note="Component sum combines 2026 realized cash results with the current unrealized position result. It is not a period return.";
+  } else {
+    const x=data.months.find(row=>row.month===picker.value);
+    const fx=Number.isFinite(data.fx)?data.fx:NaN;
+    items=[["Realized stock P/L",x.realized*fx],["Dividends",x.dividends*fx],["Interest",x.interest*fx],["Withholding tax",x.tax*fx]];
+    note="Monthly total covers realized stock P/L and cash income only. Month-end mark-to-market P/L needs an IBKR monthly statement.";
+  }
+  const total=items.reduce((s,[,v])=>s+(Number.isFinite(v)?v:0),0);
+  $("pnl-breakdown").innerHTML=items.map(([label,val])=>`<div class="pnl-row"><span>${esc(label)}</span><strong class="${signClass(val)}">${money(val)}</strong></div>`).join("")+`<div class="pnl-row pnl-total"><span>Total of shown components</span><strong class="${signClass(total)}">${money(total)}</strong></div>`;
+  $("pnl-note").textContent=note;
 }
 function renderMonthlyBars() {
   const max=Math.max(1,...data.months.map(m=>Number.isFinite(m.trades)?m.trades:0));
