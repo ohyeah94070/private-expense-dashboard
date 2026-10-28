@@ -192,8 +192,9 @@ function barRows(items,maxValue,{click,colors=[]}={}) {
   return items.map((x,i)=>"<div class='bar-row"+(click?" clickable":"")+"' "+(click?"data-group='"+esc(x.label)+"'":"")+"><span class='bar-label' title='"+esc(x.label)+"'>"+esc(x.label)+"</span><div class='bar-track'><div class='bar-fill "+(colors[i%colors.length]||"")+"' style='width:"+Math.max(0,Math.min(100,Math.abs(x.value)/max*100))+"%'></div></div><strong>"+fmt(x.value)+"</strong></div>").join("");
 }
 function renderOverview(p) {
-  $("nav").textContent=fmt(p.nav);$("nav-change").textContent="Change since prior snapshot: "+fmt(p.navChange);
-  $("total-assets").textContent=fmt(p.assets);$("total-liabilities").textContent=fmt(p.liabilities);
+  $("overview-income").textContent=fmt(p.income);
+  $("overview-net-change").textContent=fmt(p.navChange);
+  $("overview-core-savings").textContent=fmt(p.savings);
   $("expense").textContent=fmt(p.expense);$("expense-caption").textContent=p.days+"-day reconciliation period";
   const assetGroups=totals(p.positions.filter(x=>x.type==="Asset"),x=>x.category);
   $("allocation-summary").innerHTML=barRows(assetGroups,p.assets,{colors:["","blue","gold","purple"]})+"<div class='summary-total'><span>Gross assets</span><strong>"+fmt(p.assets)+"</strong></div>";
@@ -254,6 +255,7 @@ function renderSpending() {
   $("income-total").textContent=fmt(p.income);$("income-span").textContent=dateLabel(p.start)+" → "+p.label+" · "+p.days+" days";
   $("income-salary").textContent=fmt(p.salary);$("income-other").textContent=fmt(p.otherIncome);
   $("spend-total").textContent=fmt(p.expense);$("spend-span").textContent=dateLabel(p.start)+" → "+p.label+" · "+p.days+" days";
+  $("spend-net-change").textContent=fmt(p.navChange);$("spend-core-savings").textContent=fmt(p.savings);
   const incomeParts=[{label:"Salary",value:p.salary},{label:"Investment result",value:p.investment},{label:"MPF result",value:p.mpf},{label:"Other income",value:p.otherIncome}].filter(x=>Number.isFinite(x.value));
   $("income-components").innerHTML=barRows(incomeParts,Math.abs(p.income),{colors:["","blue","purple","gold"]})+"<div class='summary-total'><span>Statement income</span><strong>"+fmt(p.income)+"</strong></div>";
   const parts=[{label:"Large expenses",value:p.large},{label:"Housing",value:p.housing},{label:"Routine / unitemized",value:p.routine}].filter(x=>Number.isFinite(x.value));

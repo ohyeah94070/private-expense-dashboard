@@ -4,9 +4,9 @@ Interactive GitHub Pages dashboard for the private “Finance — Expense Review
 
 ## Views
 
-- **Overview:** net worth, gross assets, liabilities, reconciled spending, allocation, and selectable snapshot periods.
+- **Overview:** Statement period income, reconciled expense, net worth change, salary less expense, allocation, and selectable snapshot periods.
 - **Assets & liabilities:** composition by category, account, or currency; searchable positions with original-currency and HKD balances; change since the previous snapshot.
-- **Income & spending:** Statement income and expense figures, source income categories, itemized income entries, and individual “Large exp.” entries. The itemized logs can be filtered by reconciliation period or calendar month; account transfers are excluded from income entries.
+- **Income & spending:** Statement income and expense figures, net worth change, salary less expense, source income categories, itemized income entries, and individual “Large exp.” entries. The itemized logs can be filtered by reconciliation period or calendar month; account transfers are excluded from income entries.
 - **Budget planner:** monthly income, expenses, surplus, category breakdown, and the user-entered “Future One-off Plans” section from the Sheet, searchable and filterable by month, category, and inclusion status. Actual and variance figures display only when present in the Budget Sheet.
 
 The Statement's routine spending is a residual inferred from balances and adjustments. It is not a transaction ledger. Only the “Large exp.” tab contains individual spending entries. Income and expense totals, and all Budget monthly figures, are read from the Sheet's calculated cells rather than recomputed from itemized logs. Suggested expense categories are keyword-based and may need review.
