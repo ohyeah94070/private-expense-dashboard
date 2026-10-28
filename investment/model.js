@@ -1,0 +1,45 @@
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === "object" && module.exports) module.exports = api;
+  root.PortfolioModel = api;
+})(typeof window !== "undefined" ? window : globalThis, function () {
+  const n = value => value === "" || value == null ? NaN : Number(value);
+  const rows = item => item?.values || [];
+  const value = item => n(rows(item)[0]?.[0]);
+  const text = value => String(value ?? "").trim();
+  function parse(portfolio) {
+    const p = portfolio.valueRanges || [];
+    const positions = rows(p[0]).slice(1).filter(r => text(r[2])).map(r => ({
+      asOf: text(r[0]), broker: text(r[1]), symbol: text(r[2]), shares: n(r[3]),
+      currency: text(r[4]), averageCost: n(r[5]), lastPrice: n(r[6]),
+      marketValue: n(r[7]), unrealized: n(r[8])
+    }));
+    const trades = rows(p[1]).slice(1).filter(r => text(r[0]) && text(r[10])).map(r => ({
+      date: text(r[0]), broker: text(r[1]), asset: text(r[2]), symbol: text(r[3]),
+      side: text(r[4]), quantity: n(r[5]), price: n(r[6]), currency: text(r[7]),
+      commission: n(r[8]), netCash: n(r[9]), id: text(r[10]), realized: n(r[11])
+    }));
+    const cash = rows(p[2]).slice(1).filter(r => text(r[0]) && text(r[7])).map(r => ({
+      date: text(r[0]), broker: text(r[1]), type: text(r[2]), currency: text(r[3]),
+      amount: n(r[4]), symbol: text(r[5]), description: text(r[6]),
+      id: text(r[7]), settlement: text(r[8])
+    }));
+    const months = rows(p[3]).slice(1).filter(r => /^\d{4}-\d{2}$/.test(text(r[0]))).map(r => ({
+      month: text(r[0]), trades: n(r[1]), deposits: n(r[2]), withdrawals: n(r[3]),
+      dividends: n(r[4]), interest: n(r[5]), tax: n(r[6]), realized: n(r[7])
+    }));
+    return {
+      positions, trades, cash, months,
+      fx: value(p[12]),
+      metrics: {
+        totalHKD: value(p[4]), equityHKD: value(p[5]), cashHKD: value(p[6]),
+        unrealizedHKD: value(p[7]), realizedHKD: value(p[8]),
+        dividendsHKD: value(p[9]), interestHKD: value(p[10]), taxHKD: value(p[11])
+      },
+      asOf: positions[0]?.asOf || "",
+      cashThrough: cash.reduce((last, r) => r.date > last ? r.date : last, "")
+    };
+  }
+
+  return { parse };
+});

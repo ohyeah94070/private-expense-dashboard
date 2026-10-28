@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#10283c">
+  <title>Investment Review</title>
+  <meta name="description" content="Private investment performance dashboard with online market quotes.">
+  <link rel="stylesheet" href="./style.css?v=1">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="./model.js?v=1" defer></script>
+  <script src="./app.js?v=1" defer></script>
+  <script type="module" src="https://widgets.tradingview-widget.com/w/en/tv-market-data.js"></script>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar">
+    <a class="brand" href="#overview" aria-label="Investment Review home"><span class="brand-mark">◈</span><span>INVESTMENT <b>REVIEW</b></span></a>
+    <div class="top-actions"><span id="sync-status" class="sync-status">Not connected</span><button id="refresh" class="button subtle" type="button" hidden>Refresh</button><button id="disconnect" class="button subtle" type="button" hidden>Disconnect</button></div>
+  </header>
+
+  <main>
+    <section id="setup" class="connect-card">
+      <div><p class="eyebrow">PRIVATE GOOGLE SHEETS CONNECTION</p><h1>Your portfolio, in one place.</h1><p>Connect the Google account that owns your Brokerage Portfolio Tracker. The site reads that sheet directly in your browser; market quotes come from TradingView.</p><div class="privacy-line"><span class="privacy-dot"></span> Financial rows and access tokens are never stored in the website code.</div></div>
+      <div class="connect-form"><label for="client-id">Google OAuth client ID</label><input id="client-id" autocomplete="off" spellcheck="false" placeholder="…apps.googleusercontent.com"><p class="field-hint">If you connected Finance Review on this browser, this is filled in automatically.</p><button id="connect" class="button primary" type="button">Connect Google account <span aria-hidden="true">→</span></button><p id="connect-error" class="error" role="alert"></p></div>
+    </section>
+
+    <div id="app" hidden>
+      <section class="hero"><div><p class="eyebrow">PERSONAL INVESTMENTS</p><h1>Portfolio overview</h1><p id="hero-subtitle" class="muted"></p></div><div class="source-pills"><span>IBKR <i class="live-dot"></i></span><span id="webull-pill">Webull pending</span><span>TradingView market view</span></div></section>
+      <nav class="tabs" aria-label="Dashboard sections"><button class="tab active" data-tab="overview" type="button">Overview</button><button class="tab" data-tab="holdings" type="button">Holdings</button><button class="tab" data-tab="activity" type="button">Trades & cash</button><button class="tab" data-tab="watchlist" type="button">Watchlist</button></nav>
+
+      <section id="view-overview" class="view">
+        <div class="metrics"><article class="metric featured"><span>Total account value</span><strong id="total-value">—</strong><small>Approximate HKD · equities + cash</small></article><article class="metric"><span>Equity value</span><strong id="equity-value">—</strong><small>HKD equivalent</small></article><article class="metric"><span>Current unrealized P/L</span><strong id="unrealized-value">—</strong><small>Position gain or loss</small></article><article class="metric"><span>2026 realized stock P/L</span><strong id="realized-value">—</strong><small>Completed stock trades</small></article></div>
+        <div class="panel-grid"><article class="panel"><div class="panel-head"><div><p class="eyebrow">PORTFOLIO</p><h2>Where the value sits</h2></div><button class="text-link" data-go="holdings" type="button">View holdings →</button></div><div id="allocation" class="allocation"></div></article><article class="panel"><div class="panel-head"><div><p class="eyebrow">PROFIT & LOSS</p><h2>What drives the result</h2></div></div><div id="pnl-breakdown" class="pnl-breakdown"></div><p class="panel-note">Realized items use the 2026 report. Unrealized P/L is the current position result; it is not a YTD return.</p></article></div>
+        <article class="panel"><div class="panel-head"><div><p class="eyebrow">2026</p><h2>Monthly activity</h2></div><button class="text-link" data-go="activity" type="button">Explore records →</button></div><div id="monthly-bars" class="monthly-bars"></div><p class="panel-note">Bars show trade counts. Cash and P/L amounts are available in Trades & cash.</p></article>
+        <div class="source-note"><strong>Reading the numbers</strong><span id="overview-note">—</span></div>
+      </section>
+
+      <section id="view-holdings" class="view" hidden>
+        <div class="section-title"><div><p class="eyebrow">CURRENT POSITIONS</p><h2>Holdings & allocation</h2></div><span id="holding-asof" class="muted"></span></div>
+        <div class="metrics three"><article class="metric"><span>Open positions</span><strong id="position-count">—</strong></article><article class="metric"><span>Equity value</span><strong id="holding-total">—</strong><small>USD, source currency</small></article><article class="metric"><span>Largest position</span><strong id="largest-symbol">—</strong><small id="largest-weight"></small></article></div>
+        <article class="panel"><div class="panel-head"><div><p class="eyebrow">POSITION DETAIL</p><h2>Each holding</h2></div></div><div class="table-wrap"><table><thead><tr><th>Broker</th><th>Symbol</th><th class="numeric">Shares</th><th class="numeric">Average cost</th><th class="numeric">Last price</th><th class="numeric">Market value</th><th class="numeric">Unrealized P/L</th><th class="numeric">Weight</th></tr></thead><tbody id="holding-rows"></tbody></table></div></article>
+        <p class="data-note">Position prices and unrealized P/L come from the IBKR position snapshot. Webull is excluded until its API data becomes available.</p>
+      </section>
+
+      <section id="view-activity" class="view" hidden>
+        <div class="section-title"><div><p class="eyebrow">BROKERAGE RECORDS</p><h2>Trades & cash activity</h2></div><span id="activity-coverage" class="muted"></span></div>
+        <div class="metrics three"><article class="metric"><span>Executions</span><strong id="trade-count">—</strong></article><article class="metric"><span>2026 dividends</span><strong id="dividend-value">—</strong><small>Approximate HKD</small></article><article class="metric"><span>2026 interest & tax</span><strong id="interest-tax-value">—</strong><small>Approximate HKD, net</small></article></div>
+        <article class="panel"><div class="panel-head"><div><p class="eyebrow">BY MONTH</p><h2>Activity schedule</h2></div></div><div class="table-wrap"><table><thead><tr><th>Month</th><th class="numeric">Trades</th><th class="numeric">Deposits HKD</th><th class="numeric">Withdrawals HKD</th><th class="numeric">Dividends USD</th><th class="numeric">Interest USD</th><th class="numeric">Tax USD</th><th class="numeric">Realized P/L USD</th></tr></thead><tbody id="month-rows"></tbody></table></div></article>
+        <article class="panel"><div class="panel-head"><div><p class="eyebrow">EXECUTIONS</p><h2>Trade history</h2></div><div class="filters"><select id="trade-asset" aria-label="Filter trade asset"><option value="">All assets</option><option value="STK">Stocks & ETFs</option><option value="CASH">FX</option></select><input id="trade-search" type="search" placeholder="Search symbol" aria-label="Search trades"></div></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Broker</th><th>Symbol</th><th>Side</th><th class="numeric">Quantity</th><th class="numeric">Price</th><th>Currency</th><th class="numeric">Fee</th><th class="numeric">Realized P/L</th></tr></thead><tbody id="trade-rows"></tbody></table></div><p id="trade-result" class="panel-note"></p></article>
+        <article class="panel"><div class="panel-head"><div><p class="eyebrow">NON-TRADE CASH</p><h2>Cash ledger</h2></div><div class="filters"><select id="cash-type" aria-label="Filter cash activity"><option value="">All types</option><option value="DEPOSIT">Deposits</option><option value="WITHDRAWAL">Withdrawals</option><option value="DIVIDEND">Dividends</option><option value="INTEREST">Interest</option><option value="TAX">Tax</option></select><input id="cash-search" type="search" placeholder="Search description" aria-label="Search cash ledger"></div></div><div class="table-wrap"><table><thead><tr><th>Report date</th><th>Type</th><th>Currency</th><th class="numeric">Amount</th><th>Symbol</th><th>Description</th><th>Settlement date</th></tr></thead><tbody id="cash-rows"></tbody></table></div><p id="cash-result" class="panel-note"></p></article>
+        <p class="data-note">Cash Ledger excludes trade cash flows. Its report date can differ from settlement date. Deposits and withdrawals are financing flows, not investment P/L.</p>
+      </section>
+
+      <section id="view-watchlist" class="view" hidden>
+        <div class="section-title"><div><p class="eyebrow">MARKET MONITOR</p><h2>Tracked stocks, ETFs & indices</h2></div><span class="muted">Quotes supplied directly by TradingView</span></div>
+        <article class="panel"><div class="panel-head"><div><p class="eyebrow">WATCHLIST</p><h2>Market snapshot</h2></div></div><tv-market-data style="display:block;min-height:520px" symbol-sectors='[{"sectionName":"Indices","symbols":["NASDAQ:NDX","SP:SPX"]},{"sectionName":"ETFs","symbols":["NASDAQ:SOXX","NASDAQ:SMH","AMEX:SPY"]},{"sectionName":"Stocks","symbols":["NASDAQ:NVDA","NASDAQ:GOOGL","NASDAQ:MU"]}]'></tv-market-data></article>
+        <p class="data-note">TradingView loads these quotes directly online. They are separate from your brokerage records and may be delayed by the exchange. The eight tracked symbols are saved in this website's code; changing them does not require a Google Sheet.</p>
+      </section>
+    </div>
+  </main>
+</div>
+</body>
+</html>
