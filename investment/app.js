@@ -8,13 +8,19 @@ const PORTFOLIO_RANGES = [
   "'Dashboard'!G10", "'Dashboard'!I10", "'README'!B18",
   "'Monthly Summary'!A1:M100", "'Monthly Valuation'!A1:I100"
 ];
+const MARKET_RANGE = ["'Market Watch'!A1:H9"];
+const MARKET_ITEMS = [
+  ["INDEXSP:.INX","S&P 500 Index"],["INDEXNASDAQ:NDX","Nasdaq 100 Index"],
+  ["NASDAQ:SOXX","SOXX"],["NASDAQ:SMH","SMH"],["NYSEARCA:SPY","SPY"],
+  ["NASDAQ:NVDA","NVDA"],["NASDAQ:GOOGL","GOOGL"],["NASDAQ:MU","MU"]
+];
 const $ = id => document.getElementById(id);
 const esc = x => String(x ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = (x, ccy="HKD") => Number.isFinite(x) ? `${x<0?"(":""}${ccy==="HKD"?"HK$":"$"}${new Intl.NumberFormat("en-HK",{minimumFractionDigits:2,maximumFractionDigits:2}).format(Math.abs(x))}${x<0?")":""}` : "—";
 const number = (x, decimals=0) => Number.isFinite(x) ? new Intl.NumberFormat("en-HK",{minimumFractionDigits:decimals,maximumFractionDigits:decimals}).format(x) : "—";
 const percent = x => Number.isFinite(x) ? new Intl.NumberFormat("en-HK",{style:"percent",maximumFractionDigits:2,minimumFractionDigits:1}).format(x) : "—";
 const signClass = x => Number.isFinite(x) ? (x < 0 ? "negative" : x > 0 ? "positive" : "") : "";
-let tokenClient, token, data, activeTab="overview", epoch=0;
+let tokenClient, token, data, marketRows=[], marketStatus="Connect Google to load market quotes.", activeTab="overview", epoch=0;
 
 $("connect").addEventListener("click", connect);
 $("refresh").addEventListener("click", () => token ? load() : connect());
@@ -36,9 +42,11 @@ $("open-snapshot").addEventListener("click", async()=>{
     if(!data.positions.length) throw new Error("Saved snapshot has no positions.");
     $("snapshot-open-key").value="";
     $("setup").hidden=true; $("app").hidden=false; $("disconnect").hidden=false;
+    $("refresh").hidden=false; $("refresh").textContent="Connect Google";
     $("snapshot-banner").hidden=false;
     $("snapshot-date").textContent="Saved "+new Intl.DateTimeFormat("en-GB",{dateStyle:"medium",timeStyle:"short",timeZone:"Asia/Hong_Kong"}).format(new Date(result.createdAt))+" HKT · data may be out of date";
     $("sync-status").textContent="Saved snapshot";
+    marketRows=[]; marketStatus="Market quotes require Google sign-in; saved snapshots contain portfolio data only.";
     render();
   } catch(e) { $("snapshot-error").textContent=e.name==="OperationError"?"Incorrect recovery key.":e.message; }
 });
@@ -80,10 +88,24 @@ async function load() {
     const next = PortfolioModel.parse(portfolio);
     if (!next.positions.length || !Number.isFinite(next.metrics.totalHKD)) throw new Error("The brokerage sheet did not return its expected position and dashboard data.");
     data=next;
+    marketRows=[]; marketStatus="Loading market quotes…";
     $("setup").hidden=true; $("app").hidden=false;
+    $("snapshot-banner").hidden=true;
     $("refresh").hidden=false; $("disconnect").hidden=false;
+    $("refresh").textContent="Refresh";
     $("sync-status").textContent="Refreshed "+new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Hong_Kong",hour:"2-digit",minute:"2-digit"}).format(new Date())+" HKT";
     render();
+    try {
+      const result=await batchGet(BROKERAGE_SHEET,MARKET_RANGE,accessToken);
+      if(current!==epoch) return;
+      marketRows=PortfolioModel.parseMarket(result.valueRanges?.[0]?.values||[]);
+      const available=marketRows.filter(row=>Number.isFinite(row.price)).length;
+      marketStatus=available?`${available} of ${MARKET_ITEMS.length} quotes available · Google Finance via your private Sheet · quotes may be delayed up to 20 minutes.`:"No current market quotes available; missing or stale values are hidden.";
+    } catch(error) {
+      if(current!==epoch) return;
+      marketRows=[]; marketStatus="Market quotes unavailable. Portfolio data remains available.";
+    }
+    renderMarket();
   } catch(e) {
     if (current!==epoch) return;
     const message=e.message || "Could not load the sheets.";
@@ -95,7 +117,7 @@ async function load() {
 
 function disconnect() {
   const old=token;
-  ++epoch; token=undefined; data=undefined;
+  ++epoch; token=undefined; data=undefined; marketRows=[];
   const finish=()=>location.reload();
   if(old && window.google?.accounts?.oauth2) google.accounts.oauth2.revoke(old,finish);
   setTimeout(finish,1200);
@@ -124,7 +146,7 @@ function render() {
   $("unrealized-value").className=signClass(selected?selected.unrealizedHKD:data.metrics.unrealizedHKD);
   $("realized-value").className=signClass(selected?selected.realizedUSD*fx:data.metrics.realizedHKD);
   $("overview-note").textContent=selected?"Total Account Value is IBKR's official month-end NAV. Equity, cash and unrealized P/L are reconstructed using IBKR historical closes and ECB FX, so their sum may differ slightly from NAV. Monthly P/L subtracts recorded funding; January needs a December opening value.":`Account value, equity and cash are the 28 Oct IBKR account snapshot. Position prices may have a slightly different quote time. Historical P/L components use ${number(data.fx,4)} HKD per USD; this is not a YTD return.`;
-  renderAllocation(); renderPnL(); renderStockPnL(); renderMonthlyBars(); renderHoldings(); renderMonthly(); renderTrades(); renderCash();
+  renderAllocation(); renderPnL(); renderStockPnL(); renderMonthlyBars(); renderHoldings(); renderMonthly(); renderTrades(); renderCash(); renderMarket();
   if(["overview","holdings","activity","watchlist"].includes(location.hash.slice(1))) showTab(location.hash.slice(1));
   else showTab(activeTab);
 }
@@ -170,6 +192,22 @@ function renderMonthlyBars() {
     const amount=m.totalPL, width=Number.isFinite(amount)?Math.max(3,Math.abs(amount)/max*100):0;
     return `<button class="month-result ${signClass(amount)}" type="button" data-month="${esc(m.month)}"><span>${esc(m.month)}</span><strong>${money(amount)}</strong><span class="month-result-track"><i style="width:${width.toFixed(1)}%"></i></span></button>`;
   }).join("") || `<p class="empty">No monthly P/L available.</p>`;
+}
+function renderMarket() {
+  const bySymbol=new Map(marketRows.map(row=>[row.symbol,row]));
+  const marketPercent=value=>Number.isFinite(value)?new Intl.NumberFormat("en-HK",{style:"percent",minimumFractionDigits:2,maximumFractionDigits:2}).format(value):"—";
+  const changeClass=value=>Number.isFinite(value)?value>0?"up":value<0?"down":"flat":"";
+  $("market-cards").innerHTML=MARKET_ITEMS.map(([symbol,label])=>{
+    const row=bySymbol.get(symbol),[exchange,ticker]=symbol.split(":"),url=`https://www.google.com/finance/quote/${encodeURIComponent(ticker)}:${encodeURIComponent(exchange)}`;
+    const detail=symbol.startsWith("INDEX")?symbol:(row?.name||symbol);
+    const price=row?.price,high=row?.high,low=row?.low;
+    const validRange=Number.isFinite(price)&&Number.isFinite(high)&&Number.isFinite(low)&&high>low&&low>0;
+    const progress=validRange?Math.max(0,Math.min(100,(price-low)/(high-low)*100)):0;
+    return `<article class="market-card"><div class="market-card-head"><div><a href="${url}" target="_blank" rel="noopener noreferrer">${esc(label)} ↗</a><small>${esc(detail)}</small></div><span>${symbol.startsWith("INDEX")?"INDEX":"USD"}</span></div><small class="market-price-label">LATEST PRICE</small><strong class="market-price">${Number.isFinite(price)?number(price,2):"—"}</strong><div class="market-changes"><div><small>1D CHANGE</small><b class="${changeClass(row?.day)}">${marketPercent(row?.day)}</b></div><div><small>1W CHANGE</small><b class="${changeClass(row?.week)}">${marketPercent(row?.week)}</b></div></div><div class="market-range"><div><span>52W LOW</span><span>52W HIGH</span></div><div><b>${Number.isFinite(low)?number(low,2):"—"}</b><b>${Number.isFinite(high)?number(high,2):"—"}</b></div><div class="market-range-track">${validRange?`<i style="left:${progress.toFixed(1)}%"></i>`:""}</div></div><p>Updated: ${row?.updatedAt?esc(row.updatedAt):"—"}</p></article>`;
+  }).join("");
+  const latest=marketRows.map(row=>row.updatedAt).filter(Boolean).sort().at(-1);
+  $("market-updated").textContent=latest?`Latest source quote: ${latest}`:"Quote time unavailable";
+  $("market-status").textContent=marketStatus;
 }
 function renderHoldings() {
   const period=$("overview-period").value, current=period==="current";

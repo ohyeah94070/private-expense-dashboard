@@ -6,11 +6,11 @@
   <meta name="theme-color" content="#10283c">
   <title>Investment Review</title>
   <meta name="description" content="Private investment performance dashboard with monthly portfolio results.">
-  <link rel="stylesheet" href="./style.css?v=3">
+  <link rel="stylesheet" href="./style.css?v=4">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./model.js?v=5" defer></script>
+  <script src="./model.js?v=6" defer></script>
   <script src="./snapshot.js?v=2" defer></script>
-  <script src="./app.js?v=9" defer></script>
+  <script src="./app.js?v=10" defer></script>
 </head>
 <body>
 <div class="shell">
@@ -55,9 +55,10 @@
       </section>
 
       <section id="view-watchlist" class="view" hidden>
-        <div class="section-title"><div><p class="eyebrow">MARKET MONITOR</p><h2>Tracked stocks, ETFs & indices</h2></div><span class="muted">Direct market pages</span></div>
-        <article class="panel"><div class="panel-head"><div><p class="eyebrow">WATCHLIST</p><h2>Market links</h2></div></div><div class="watch-links"><a href="https://www.google.com/finance/quote/.INX:INDEXSP" target="_blank" rel="noopener noreferrer">S&amp;P 500 ↗</a><a href="https://www.google.com/finance/quote/NDX:INDEXNASDAQ" target="_blank" rel="noopener noreferrer">Nasdaq 100 ↗</a><a href="https://www.google.com/finance/quote/SOXX:NASDAQ" target="_blank" rel="noopener noreferrer">SOXX ↗</a><a href="https://www.google.com/finance/quote/SMH:NASDAQ" target="_blank" rel="noopener noreferrer">SMH ↗</a><a href="https://www.google.com/finance/quote/SPY:NYSEARCA" target="_blank" rel="noopener noreferrer">SPY ↗</a><a href="https://www.google.com/finance/quote/NVDA:NASDAQ" target="_blank" rel="noopener noreferrer">NVDA ↗</a><a href="https://www.google.com/finance/quote/GOOGL:NASDAQ" target="_blank" rel="noopener noreferrer">GOOGL ↗</a><a href="https://www.google.com/finance/quote/MU:NASDAQ" target="_blank" rel="noopener noreferrer">MU ↗</a></div></article>
-        <p class="data-note">IBKR Web API market quotes require an authenticated brokerage session and relevant market data subscriptions. Live quote integration is pending that setup.</p>
+        <div class="section-title"><div><p class="eyebrow">MARKET WATCH</p><h2>Stocks, ETFs & indices</h2></div><span id="market-updated" class="muted">Quote time unavailable</span></div>
+        <div id="market-cards" class="market-grid" aria-live="polite"></div>
+        <p id="market-status" class="data-note">Connect Google to load market quotes.</p>
+        <p class="data-note">S&amp;P 500 and Nasdaq 100 are index quotes. Prices and changes come from Google Finance through your private Google Sheet. Quote times are shown as reported by the source and may be delayed.</p>
       </section>
     </div>
   </main>

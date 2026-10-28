@@ -49,6 +49,18 @@
     }));
     return holdings.filter(x=>x.shares>0).sort((a,b)=>b.marketValue-a.marketValue);
   }
+  function parseMarket(values, now=Date.now()) {
+    return values.slice(1).filter(row=>text(row[0])).map(row=>{
+      const updatedAt=text(row[7]);
+      const date=/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(updatedAt)?Date.parse(updatedAt.slice(0,10)+"T00:00:00Z"):NaN;
+      const fresh=Number.isFinite(date)&&date<=now+86400000&&now-date<=7*86400000;
+      const metric=index=>fresh?n(row[index]):NaN;
+      const positive=index=>metric(index)>0?metric(index):NaN;
+      let high=positive(5),low=positive(6);
+      if(high<low) high=low=NaN;
+      return {symbol:text(row[0]),name:text(row[1]),price:positive(2),day:metric(3),week:metric(4),high,low,updatedAt:fresh?updatedAt:"",stale:!fresh};
+    });
+  }
   function parse(portfolio) {
     const p = portfolio.valueRanges || [];
     const positions = rows(p[0]).slice(1).filter(r => text(r[2])).map(r => ({
@@ -92,5 +104,5 @@
     };
   }
 
-  return { parse, monthlyBreakdown, stockBreakdown, holdingsForPeriod };
+  return { parse, monthlyBreakdown, stockBreakdown, holdingsForPeriod, parseMarket };
 });
