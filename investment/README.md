@@ -11,6 +11,8 @@ Read-only GitHub Pages investment dashboard. The browser signs in to the private
 
 The Overview period selector uses IBKR official month-end NAV for Total Account Value. Stock value, cash and unrealized P/L remain reconstructed estimates. Monthly total P/L subtracts recorded net funding from the change in official NAV; it may differ from IBKR's performance reports because of FX timing and unrecorded flows. January has no prior-month opening value.
 
+The P/L panel distinguishes the **month-end unrealized stock P/L balance** from its **change during the month**. A positive balance can fall during a losing month. The monthly breakdown shows realized stock P/L, dividends, interest, tax and an FX/fees/valuation reconciliation amount; these sum to monthly total P/L. The Overview monthly cards show each completed month's funding-adjusted result, not trade counts.
+
 ## Encrypted GitHub snapshot
 
 `investment/snapshot.enc.json` is an encrypted point-in-time copy of the private Sheet. The website opens it with a recovery key when Google access is unavailable. The ciphertext is public, but the key is not stored in the repository. Google sign-in does not itself refresh this GitHub file; an authorized update must republish it.

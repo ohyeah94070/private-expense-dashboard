@@ -7,6 +7,19 @@
   const rows = item => item?.values || [];
   const value = item => n(rows(item)[0]?.[0]);
   const text = value => String(value ?? "").trim();
+  function monthlyBreakdown(history, activity, month) {
+    const index=history.findIndex(x=>x.month===month);
+    if(index<0) return null;
+    const row=history[index], prior=history[index-1], flows=activity.find(x=>x.month===month);
+    const fx=row.fx;
+    const changeUnrealized=prior ? row.unrealizedHKD-prior.unrealizedHKD : NaN;
+    const realized=(flows?.realized??0)*fx;
+    const dividends=(flows?.dividends??0)*fx;
+    const interest=(flows?.interest??0)*fx;
+    const tax=(flows?.tax??0)*fx;
+    const known=changeUnrealized+realized+dividends+interest+tax;
+    return {total:row.totalPL,endUnrealized:row.unrealizedHKD,changeUnrealized,realized,dividends,interest,tax,other:Number.isFinite(row.totalPL)&&Number.isFinite(known)?row.totalPL-known:NaN};
+  }
   function parse(portfolio) {
     const p = portfolio.valueRanges || [];
     const positions = rows(p[0]).slice(1).filter(r => text(r[2])).map(r => ({
@@ -50,5 +63,5 @@
     };
   }
 
-  return { parse };
+  return { parse, monthlyBreakdown };
 });

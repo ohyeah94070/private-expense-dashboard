@@ -24,6 +24,10 @@ document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", 
 for(const id of ["trade-asset","trade-search"]) $(id).addEventListener(id.endsWith("search")?"input":"change", renderTrades);
 for(const id of ["cash-type","cash-search"]) $(id).addEventListener(id.endsWith("search")?"input":"change", renderCash);
 $("overview-period").addEventListener("change", render);
+$("monthly-bars").addEventListener("click", event => {
+  const card=event.target.closest("[data-month]");
+  if(card) { $("overview-period").value=card.dataset.month; render(); }
+});
 $("open-snapshot").addEventListener("click", async()=>{
   $("snapshot-error").textContent="";
   try {
@@ -111,11 +115,12 @@ function render() {
   $("total-value").textContent=selected?money(selected.totalHKD):money(data.metrics.totalHKD);
   $("equity-value").textContent=selected?money(selected.equityHKD):money(data.metrics.equityHKD);
   $("unrealized-value").textContent=selected?money(selected.unrealizedHKD):money(data.metrics.unrealizedHKD);
+  $("unrealized-label").textContent=selected?"Unrealized stock P/L · month end":"Unrealized stock P/L · current";
   $("realized-value").textContent=selected?money(selected.realizedUSD*fx):money(data.metrics.realizedHKD);
   $("period-pnl").textContent=selected?money(selected.totalPL):money(data.metrics.realizedHKD+data.metrics.unrealizedHKD+data.metrics.dividendsHKD+data.metrics.interestHKD+data.metrics.taxHKD);
   $("period-pnl-label").textContent=selected?"Monthly total P/L":"Displayed component total";
-  $("unrealized-value").className=signClass(data.metrics.unrealizedHKD);
-  $("realized-value").className=signClass(data.metrics.realizedHKD);
+  $("unrealized-value").className=signClass(selected?selected.unrealizedHKD:data.metrics.unrealizedHKD);
+  $("realized-value").className=signClass(selected?selected.realizedUSD*fx:data.metrics.realizedHKD);
   $("overview-note").textContent=selected?"Total Account Value is IBKR's official month-end NAV. Equity, cash and unrealized P/L are reconstructed using IBKR historical closes and ECB FX, so their sum may differ slightly from NAV. Monthly P/L subtracts recorded funding; January needs a December opening value.":`Account value, equity and cash are the 28 Oct IBKR account snapshot. Position prices may have a slightly different quote time. Historical P/L components use ${number(data.fx,4)} HKD per USD; this is not a YTD return.`;
   renderAllocation(); renderPnL(); renderMonthlyBars(); renderHoldings(); renderMonthly(); renderTrades(); renderCash();
   if(["overview","holdings","activity","watchlist"].includes(location.hash.slice(1))) showTab(location.hash.slice(1));
@@ -134,23 +139,27 @@ function renderAllocation() {
 function renderPnL() {
   const m=data.metrics;
   const period=$("overview-period").value;
-  let items,note;
+  let items,note,total,balance="";
   if(period==="current") {
-    items=[["Realized stock P/L · 2026",m.realizedHKD],["Unrealized position P/L · current",m.unrealizedHKD],["Dividends · 2026",m.dividendsHKD],["Interest · 2026",m.interestHKD],["Withholding tax · 2026",m.taxHKD]];
+    items=[["Realized stock P/L · 2026",m.realizedHKD],["Unrealized stock P/L · current",m.unrealizedHKD],["Dividends · 2026",m.dividendsHKD],["Interest · 2026",m.interestHKD],["Withholding tax · 2026",m.taxHKD]];
+    total=items.reduce((sum,[,value])=>sum+(Number.isFinite(value)?value:0),0);
     note="Component sum combines 2026 realized cash results with the current unrealized position result. It is not a period return.";
   } else {
-    const x=data.months.find(row=>row.month===period);
-    const fx=data.history.find(row=>row.month===period)?.fx;
-    items=[["Realized stock P/L",x.realized*fx],["Dividends",x.dividends*fx],["Interest",x.interest*fx],["Withholding tax",x.tax*fx]];
-    note="Monthly total P/L uses the change in reconstructed account value after deposits and withdrawals. The component rows show reported realized income and trading results.";
+    const result=PortfolioModel.monthlyBreakdown(data.history,data.months,period);
+    items=[["Change in unrealized stock P/L",result.changeUnrealized],["Realized stock P/L",result.realized],["Dividends",result.dividends],["Interest",result.interest],["Withholding tax",result.tax],["FX, fees & valuation difference",result.other]];
+    total=result.total;
+    balance=`<div class="pnl-balance"><span>Unrealized stock P/L at month end</span><strong class="${signClass(result.endUnrealized)}">${money(result.endUnrealized)}</strong></div>`;
+    note=Number.isFinite(total)?"Month-end unrealized P/L is a cumulative balance. Monthly P/L uses its change since the prior month, plus realized results, income and the small FX/valuation difference. The total equals IBKR month-end NAV change after recorded funding.":"January monthly P/L needs a December opening account value and unrealized balance.";
   }
-  const total=period==="current"?items.reduce((s,[,v])=>s+(Number.isFinite(v)?v:0),0):data.history.find(x=>x.month===period)?.totalPL;
-  $("pnl-breakdown").innerHTML=items.map(([label,val])=>`<div class="pnl-row"><span>${esc(label)}</span><strong class="${signClass(val)}">${money(val)}</strong></div>`).join("")+`<div class="pnl-row pnl-total"><span>${period==="current"?"Total of shown components":"Monthly total P/L · funding adjusted"}</span><strong class="${signClass(total)}">${money(total)}</strong></div>`;
+  $("pnl-breakdown").innerHTML=balance+items.map(([label,val])=>`<div class="pnl-row"><span>${esc(label)}</span><strong class="${signClass(val)}">${money(val)}</strong></div>`).join("")+`<div class="pnl-row pnl-total"><span>${period==="current"?"Total of shown components":"Monthly total P/L · funding adjusted"}</span><strong class="${signClass(total)}">${money(total)}</strong></div>`;
   $("pnl-note").textContent=note;
 }
 function renderMonthlyBars() {
-  const max=Math.max(1,...data.months.map(m=>Number.isFinite(m.trades)?m.trades:0));
-  $("monthly-bars").innerHTML=data.months.map(m=>`<div class="month-bar"><span>${esc(m.month)}</span><div class="bar-track"><i style="height:${Math.max(0,Math.min(100,(m.trades||0)/max*100)).toFixed(1)}%"></i></div><b>${number(m.trades)}</b></div>`).join("") || `<p class="empty">No monthly activity available.</p>`;
+  const max=Math.max(1,...data.history.map(m=>Number.isFinite(m.totalPL)?Math.abs(m.totalPL):0));
+  $("monthly-bars").innerHTML=data.history.map(m=>{
+    const amount=m.totalPL, width=Number.isFinite(amount)?Math.max(3,Math.abs(amount)/max*100):0;
+    return `<button class="month-result ${signClass(amount)}" type="button" data-month="${esc(m.month)}"><span>${esc(m.month)}</span><strong>${money(amount)}</strong><span class="month-result-track"><i style="width:${width.toFixed(1)}%"></i></span></button>`;
+  }).join("") || `<p class="empty">No monthly P/L available.</p>`;
 }
 function renderHoldings() {
   const holdings=[...data.positions].filter(x=>x.shares>0).sort((a,b)=>b.marketValue-a.marketValue);
