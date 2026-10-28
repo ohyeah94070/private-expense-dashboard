@@ -41,6 +41,14 @@
       return {symbol,open,realized,income,total:open+realized+income};
     });
   }
+  function holdingsForPeriod(data, period) {
+    const holdings=period==="current"?data.positions:data.valuations.filter(x=>x.month===period).map(x=>({
+      asOf:period,broker:"IBKR",symbol:x.symbol,shares:x.shares,currency:"USD",
+      averageCost:x.shares>0?x.costBasis/x.shares:NaN,lastPrice:x.close,
+      marketValue:x.marketValue,unrealized:x.unrealized
+    }));
+    return holdings.filter(x=>x.shares>0).sort((a,b)=>b.marketValue-a.marketValue);
+  }
   function parse(portfolio) {
     const p = portfolio.valueRanges || [];
     const positions = rows(p[0]).slice(1).filter(r => text(r[2])).map(r => ({
@@ -84,5 +92,5 @@
     };
   }
 
-  return { parse, monthlyBreakdown, stockBreakdown };
+  return { parse, monthlyBreakdown, stockBreakdown, holdingsForPeriod };
 });

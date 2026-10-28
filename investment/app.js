@@ -172,13 +172,17 @@ function renderMonthlyBars() {
   }).join("") || `<p class="empty">No monthly P/L available.</p>`;
 }
 function renderHoldings() {
-  const holdings=[...data.positions].filter(x=>x.shares>0).sort((a,b)=>b.marketValue-a.marketValue);
+  const period=$("overview-period").value, current=period==="current";
+  const holdings=PortfolioModel.holdingsForPeriod(data,period);
   const total=holdings.reduce((s,x)=>s+(Number.isFinite(x.marketValue)?x.marketValue:0),0);
   $("position-count").textContent=number(holdings.length);
   $("holding-total").textContent=money(total,"USD");
   $("largest-symbol").textContent=holdings[0]?.symbol||"—";
   $("largest-weight").textContent=holdings[0]&&total>0?`${percent(holdings[0].marketValue/total)} of equity value`:"";
-  $("holding-asof").textContent=data.asOf?`As of ${data.asOf}`:"";
+  $("holdings-scope").textContent=current?"CURRENT POSITIONS":"MONTH-END POSITIONS";
+  $("holding-asof").textContent=current?(data.asOf?`As of ${data.asOf}`:""):`${period} month end`;
+  $("holding-price-head").textContent=current?"Last price":"Month-end close";
+  $("holdings-note").textContent=current?"Position prices and unrealized P/L come from the latest IBKR position snapshot. Webull is pending.":"Historical shares and cost bases are reconstructed from IBKR trades; closing prices come from IBKR daily history. Values are estimates until reconciled with monthly statements.";
   $("holding-rows").innerHTML=holdings.map(x=>`<tr><td>${esc(x.broker)}</td><td><strong>${esc(x.symbol)}</strong></td><td class="numeric">${number(x.shares)}</td><td class="numeric">${money(x.averageCost,"USD")}</td><td class="numeric">${money(x.lastPrice,"USD")}</td><td class="numeric">${money(x.marketValue,"USD")}</td><td class="numeric ${signClass(x.unrealized)}">${money(x.unrealized,"USD")}</td><td class="numeric">${total>0?percent(x.marketValue/total):"—"}</td></tr>`).join("") || `<tr><td colspan="8" class="empty">No positions available.</td></tr>`;
 }
 function renderMonthly() {

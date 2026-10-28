@@ -8,9 +8,9 @@
   <meta name="description" content="Private investment performance dashboard with monthly portfolio results.">
   <link rel="stylesheet" href="./style.css?v=3">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./model.js?v=4" defer></script>
+  <script src="./model.js?v=5" defer></script>
   <script src="./snapshot.js?v=2" defer></script>
-  <script src="./app.js?v=8" defer></script>
+  <script src="./app.js?v=9" defer></script>
 </head>
 <body>
 <div class="shell">
@@ -39,10 +39,10 @@
       </section>
 
       <section id="view-holdings" class="view" hidden>
-        <div class="section-title"><div><p class="eyebrow">CURRENT POSITIONS</p><h2>Holdings & allocation</h2></div><span id="holding-asof" class="muted"></span></div>
+        <div class="section-title"><div><p id="holdings-scope" class="eyebrow">CURRENT POSITIONS</p><h2>Holdings & allocation</h2></div><span id="holding-asof" class="muted"></span></div>
         <div class="metrics three"><article class="metric"><span>Open positions</span><strong id="position-count">—</strong></article><article class="metric"><span>Equity value</span><strong id="holding-total">—</strong><small>USD, source currency</small></article><article class="metric"><span>Largest position</span><strong id="largest-symbol">—</strong><small id="largest-weight"></small></article></div>
-        <article class="panel"><div class="panel-head"><div><p class="eyebrow">POSITION DETAIL</p><h2>Each holding</h2></div></div><div class="table-wrap"><table><thead><tr><th>Broker</th><th>Symbol</th><th class="numeric">Shares</th><th class="numeric">Average cost</th><th class="numeric">Last price</th><th class="numeric">Market value</th><th class="numeric">Unrealized P/L</th><th class="numeric">Weight</th></tr></thead><tbody id="holding-rows"></tbody></table></div></article>
-        <p class="data-note">Position prices and unrealized P/L come from the IBKR position snapshot. Webull is excluded until its API data becomes available.</p>
+        <article class="panel"><div class="panel-head"><div><p class="eyebrow">POSITION DETAIL</p><h2>Each holding</h2></div></div><div class="table-wrap"><table><thead><tr><th>Broker</th><th>Symbol</th><th class="numeric">Shares</th><th class="numeric">Average cost</th><th id="holding-price-head" class="numeric">Last price</th><th class="numeric">Market value</th><th class="numeric">Unrealized P/L</th><th class="numeric">Weight</th></tr></thead><tbody id="holding-rows"></tbody></table></div></article>
+        <p id="holdings-note" class="data-note">Position prices and unrealized P/L come from the latest IBKR position snapshot. Webull is pending.</p>
       </section>
 
       <section id="view-activity" class="view" hidden>
