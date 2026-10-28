@@ -21,13 +21,13 @@
 
   <main>
     <section id="setup" class="connect-card">
-      <div><p class="eyebrow">PRIVATE GOOGLE SHEETS CONNECTION</p><h1>Your portfolio, in one place.</h1><p>Connect the Google account that owns your Brokerage Portfolio Tracker. The site reads that sheet directly in your browser; market quotes come from TradingView.</p><div class="privacy-line"><span class="privacy-dot"></span> Financial rows and access tokens are never stored in the website code.</div></div>
+      <div><p class="eyebrow">PRIVATE GOOGLE SHEETS CONNECTION</p><h1>Your portfolio, in one place.</h1><p>Connect the Google account that owns your Brokerage Portfolio Tracker. Monthly account values and historical closes are sourced from IBKR.</p><div class="privacy-line"><span class="privacy-dot"></span> Financial rows and access tokens are never stored in the website code.</div></div>
       <div class="connect-form"><p class="eyebrow">SECURE SIGN-IN</p><h2>Connect Google Sheets</h2><p class="field-hint">Use the Google account that owns your Brokerage Portfolio Tracker.</p><button id="connect" class="button primary" type="button">Connect Google account <span aria-hidden="true">→</span></button><p id="connect-error" class="error" role="alert"></p><hr><p class="eyebrow">NO GOOGLE ACCESS</p><h2>Open saved snapshot</h2><label for="snapshot-open-key">Recovery key</label><input id="snapshot-open-key" type="password" autocomplete="off" placeholder="Your recovery key"><button id="open-snapshot" class="button" type="button">Open snapshot</button><p id="snapshot-error" class="error" role="alert"></p></div>
     </section>
 
     <div id="app" hidden>
       <div id="snapshot-banner" class="source-note" hidden><strong>Saved snapshot</strong><span id="snapshot-date"></span></div>
-      <section class="hero"><div><p class="eyebrow">PERSONAL INVESTMENTS</p><h1>Portfolio overview</h1><p id="hero-subtitle" class="muted"></p></div><div><label for="overview-period">Reporting period</label><select id="overview-period"><option value="current">Current position + 2026 activity</option></select><div class="source-pills"><span>IBKR <i class="live-dot"></i></span><span id="webull-pill">Webull pending</span><span>TradingView market view</span></div></div></section>
+      <section class="hero"><div><p class="eyebrow">PERSONAL INVESTMENTS</p><h1>Portfolio overview</h1><p id="hero-subtitle" class="muted"></p></div><div><label for="overview-period">Reporting period</label><select id="overview-period"><option value="current">Current position + 2026 activity</option></select><div class="source-pills"><span>IBKR records</span><span id="webull-pill">Webull pending</span></div></div></section>
       <nav class="tabs" aria-label="Dashboard sections"><button class="tab active" data-tab="overview" type="button">Overview</button><button class="tab" data-tab="holdings" type="button">Holdings</button><button class="tab" data-tab="activity" type="button">Trades & cash</button><button class="tab" data-tab="watchlist" type="button">Watchlist</button></nav>
 
       <section id="view-overview" class="view">
@@ -54,9 +54,9 @@
       </section>
 
       <section id="view-watchlist" class="view" hidden>
-        <div class="section-title"><div><p class="eyebrow">MARKET MONITOR</p><h2>Tracked stocks, ETFs & indices</h2></div><span class="muted">Quotes supplied directly by TradingView</span></div>
-        <article class="panel"><div class="panel-head"><div><p class="eyebrow">WATCHLIST</p><h2>Market snapshot</h2></div></div><iframe src="./market.html" title="Online market data" sandbox="allow-scripts" style="width:100%;height:550px;border:0"></iframe></article>
-        <p class="data-note">TradingView loads these quotes directly online. They are separate from your brokerage records and may be delayed by the exchange. The eight tracked symbols are saved in this website's code; changing them does not require a Google Sheet.</p>
+        <div class="section-title"><div><p class="eyebrow">MARKET MONITOR</p><h2>Tracked stocks, ETFs & indices</h2></div><span class="muted">Direct market pages</span></div>
+        <article class="panel"><div class="panel-head"><div><p class="eyebrow">WATCHLIST</p><h2>Market links</h2></div></div><div class="watch-links"><a href="https://www.google.com/finance/quote/.INX:INDEXSP" target="_blank" rel="noopener noreferrer">S&amp;P 500 ↗</a><a href="https://www.google.com/finance/quote/NDX:INDEXNASDAQ" target="_blank" rel="noopener noreferrer">Nasdaq 100 ↗</a><a href="https://www.google.com/finance/quote/SOXX:NASDAQ" target="_blank" rel="noopener noreferrer">SOXX ↗</a><a href="https://www.google.com/finance/quote/SMH:NASDAQ" target="_blank" rel="noopener noreferrer">SMH ↗</a><a href="https://www.google.com/finance/quote/SPY:NYSEARCA" target="_blank" rel="noopener noreferrer">SPY ↗</a><a href="https://www.google.com/finance/quote/NVDA:NASDAQ" target="_blank" rel="noopener noreferrer">NVDA ↗</a><a href="https://www.google.com/finance/quote/GOOGL:NASDAQ" target="_blank" rel="noopener noreferrer">GOOGL ↗</a><a href="https://www.google.com/finance/quote/MU:NASDAQ" target="_blank" rel="noopener noreferrer">MU ↗</a></div></article>
+        <p class="data-note">IBKR Web API market quotes require an authenticated brokerage session and relevant market data subscriptions. Live quote integration is pending that setup.</p>
       </section>
     </div>
   </main>

@@ -30,7 +30,7 @@
     }));
     const history=rows(p[13]).slice(1).filter(r=>/^\d{4}-\d{2}$/.test(text(r[0]))).map(r=>({
       month:text(r[0]),equityUSD:n(r[1]),cashUSD:n(r[2]),cashHKD:n(r[3]),fx:n(r[4]),
-      equityHKD:n(r[5]),cashTotalHKD:n(r[6]),totalHKD:n(r[7]),unrealizedHKD:n(r[8]),
+      equityHKD:n(r[5]),cashTotalHKD:n(r[6]),totalHKD:n(r[12])||n(r[7]),unrealizedHKD:n(r[8]),
       realizedUSD:n(r[9]),totalPL:n(r[10]),netFundingHKD:n(r[11])
     }));
     const valuations=rows(p[14]).slice(1).filter(r=>/^\d{4}-\d{2}$/.test(text(r[0]))).map(r=>({

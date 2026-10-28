@@ -6,7 +6,7 @@ const PORTFOLIO_RANGES = [
   "'Monthly Activity'!A4:H100", "'Dashboard'!A6", "'Dashboard'!C6",
   "'Dashboard'!E6", "'Dashboard'!A10", "'Dashboard'!C10", "'Dashboard'!E10",
   "'Dashboard'!G10", "'Dashboard'!I10", "'README'!B18",
-  "'Monthly Summary'!A1:L100", "'Monthly Valuation'!A1:I100"
+  "'Monthly Summary'!A1:M100", "'Monthly Valuation'!A1:I100"
 ];
 const $ = id => document.getElementById(id);
 const esc = x => String(x ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -107,7 +107,7 @@ function render() {
   selector.innerHTML='<option value="current">Current position + 2026 activity</option>'+data.history.map(x=>`<option value="${esc(x.month)}">${esc(x.month)}</option>`).join("");
   selector.value=[...selector.options].some(x=>x.value===prior)?prior:"current";
   const selected=data.history.find(x=>x.month===selector.value),fx=selected?.fx??data.fx;
-  $("hero-subtitle").textContent=selected?`${selected.month} month end · shares and cash reconstructed from IBKR records`:`IBKR positions ${data.asOf || "—"} · Cash activity through ${data.cashThrough || "—"} · Webull data pending`;
+  $("hero-subtitle").textContent=selected?`${selected.month} month end · official IBKR account value; shares and cash reconstructed`:`IBKR positions ${data.asOf || "—"} · Cash activity through ${data.cashThrough || "—"} · Webull data pending`;
   $("total-value").textContent=selected?money(selected.totalHKD):money(data.metrics.totalHKD);
   $("equity-value").textContent=selected?money(selected.equityHKD):money(data.metrics.equityHKD);
   $("unrealized-value").textContent=selected?money(selected.unrealizedHKD):money(data.metrics.unrealizedHKD);
@@ -116,7 +116,7 @@ function render() {
   $("period-pnl-label").textContent=selected?"Monthly total P/L":"Displayed component total";
   $("unrealized-value").className=signClass(data.metrics.unrealizedHKD);
   $("realized-value").className=signClass(data.metrics.realizedHKD);
-  $("overview-note").textContent=selected?"Historical values are reconstructed from the current IBKR position and cash snapshot, subsequent transactions, Alpaca SIP month-end closes and ECB FX reference rates. They assume no unrecorded share or cash changes. January total P/L needs a December opening value.":`Top values match the Brokerage Portfolio Tracker Dashboard. USD amounts are shown in HKD using its reference rate (${number(data.fx,4)} HKD per USD). Equity and cash snapshots have different dates; this is not a YTD return.`;
+  $("overview-note").textContent=selected?"Total Account Value is IBKR's official month-end NAV. Equity, cash and unrealized P/L are reconstructed using IBKR historical closes and ECB FX, so their sum may differ slightly from NAV. Monthly P/L subtracts recorded funding; January needs a December opening value.":`Top values match the Brokerage Portfolio Tracker Dashboard. USD amounts are shown in HKD using its reference rate (${number(data.fx,4)} HKD per USD). Equity and cash snapshots have different dates; this is not a YTD return.`;
   renderAllocation(); renderPnL(); renderMonthlyBars(); renderHoldings(); renderMonthly(); renderTrades(); renderCash();
   if(["overview","holdings","activity","watchlist"].includes(location.hash.slice(1))) showTab(location.hash.slice(1));
   else showTab(activeTab);

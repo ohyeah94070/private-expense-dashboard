@@ -1,20 +1,18 @@
 # Investment Review
 
-Read-only investment dashboard for one private Google Sheet and online market data:
+Read-only GitHub Pages investment dashboard. The browser signs in to the private Brokerage Portfolio Tracker Google Sheet; no broker credentials are embedded in the public website.
 
-- Brokerage Portfolio Tracker: positions, trades, non-trade cash ledger, monthly activity, and dashboard totals.
-- TradingView Market Data widget: online prices for the eight tracked symbols in an isolated iframe. It does not read US Markets Tracker or store quote history on Google Drive.
+## Data sources
 
-The site uses the Google Sheets API in the visitor's browser with the `spreadsheets.readonly` scope. It shares the public Google OAuth client ID and website origin used by Finance Review, so visitors only need to select **Connect Google account**. Tokens remain in memory. The public repository contains no account rows, report XML, access token, or private key. Only a Google account already permitted to read Brokerage Portfolio Tracker can load the private data.
+- Current portfolio, trades, cash activity: IBKR records imported into the private Sheet. Webull is pending.
+- Historical month-end account value: IBKR PortfolioAnalyst daily NAV, sampled on the last trading day of each month and stored in `Monthly Summary!M2:M10`.
+- Historical QLD, QQQ and SPYM closes: IBKR historical daily bars. The month-end share counts, cash and cost bases are still reconstructed from transactions in the Sheet; these are estimates until reconciled with IBKR statements.
+- Watchlist: direct market-page links. The public static website cannot call IBKR's authenticated market-data API itself; doing so would expose brokerage credentials. There is no TradingView widget or quote archive.
 
-Open the page and select **Connect Google account**. Use **Refresh** to read the current Sheet values. New IBKR/Webull reports must first be imported into Brokerage Portfolio Tracker; uploading a raw file alone does not update its calculated tables. TradingView controls quote refresh and may display delayed exchange data.
-
-The main HKD figures are read directly from Brokerage Portfolio Tracker's Dashboard. The site does not independently recompute those headline values. The source sheet uses one reference FX rate, combines equity and cash snapshots with different as-of dates, and does not calculate an exact YTD return. TradingView's embedded quotes cannot be used by the site's JavaScript to calculate personal P/L.
-
-The Overview period selector shows current values or a completed 2026 month. `Monthly Valuation` holds reconstructed month-end shares, Alpaca SIP closing prices, cost basis and unrealized P/L. `Monthly Summary` holds reconstructed USD/HKD cash balances, ECB month-end FX, total value and funding-adjusted monthly P/L. January has no total P/L because December opening value is missing. Reconstructions assume no unrecorded trades, share changes or cash flows; month-end IBKR Flex statements should be used to reconcile them.
+The Overview period selector uses IBKR official month-end NAV for Total Account Value. Stock value, cash and unrealized P/L remain reconstructed estimates. Monthly total P/L subtracts recorded net funding from the change in official NAV; it may differ from IBKR's performance reports because of FX timing and unrecorded flows. January has no prior-month opening value.
 
 ## Encrypted GitHub snapshot
 
-The GitHub repository contains `investment/snapshot.enc.json`, an encrypted point-in-time copy of the brokerage Sheet values. The website opens it with a recovery key when Google access is unavailable. The ciphertext is publicly downloadable, but the key is not stored in the repository. Refreshing it requires an authorized update to GitHub; signing in to Google on the public website alone cannot write to GitHub. Keep the recovery key safe: losing it makes the snapshot unreadable.
+`investment/snapshot.enc.json` is an encrypted point-in-time copy of the private Sheet. The website opens it with a recovery key when Google access is unavailable. The ciphertext is public, but the key is not stored in the repository. Google sign-in does not itself refresh this GitHub file; an authorized update must republish it.
 
 Local checks: `node --check app.js`, `node --check model.js`, `node model.test.js`.
