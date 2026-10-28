@@ -39,7 +39,12 @@ select{cursor:pointer}
 .setup-fields{display:flex;flex-direction:column;align-items:stretch;gap:8px}
 .setup-fields label:not(:first-child){margin-top:8px}
 .setup-fields .button{margin-top:8px}
+.snapshot-access{border-top:1px solid #dce6e2;margin-top:17px;padding-top:20px;display:flex;flex-direction:column;gap:8px}
+.snapshot-access h2{font-size:16px}
+.snapshot-access p:not(.kicker){margin:0 0 5px}
+.snapshot-access .button{margin-top:4px}
 .error{color:#ad594e;font-size:12px;min-height:1em;margin:0}
+.snapshot-banner{background:#fff1d4;border:1px solid #e6cc8c;color:#704f20;border-radius:9px;padding:11px 14px;margin-bottom:20px;font-size:12px}
 .tabs{display:flex;gap:6px;border-bottom:1px solid #d9e4e0;overflow-x:auto;margin-bottom:22px}
 .tab{border:0;border-bottom:3px solid transparent;background:transparent;color:#667c80;padding:13px 18px;font-size:13px;font-weight:700;white-space:nowrap}
 .tab:hover{color:#1c5d50;background:#edf3f0}

@@ -5,14 +5,15 @@
 <meta name="theme-color" content="#101d24"><title>Finance Review</title>
 <link rel="stylesheet" href="./style.css?v=20261028-4">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="./app.js?v=20261028-7" defer></script>
+<script src="./app.js?v=20261028-8" defer></script>
 </head>
 <body>
 <div class="app-shell">
 <header class="topbar"><div class="brand"><span class="brand-icon">◈</span><span>FINANCE <b>REVIEW</b></span></div><div class="top-actions"><span id="sync-time">Not connected</span><button id="refresh" class="button ghost">Refresh data</button><button id="disconnect" class="button ghost">Disconnect</button></div></header>
 <main>
-<section id="setup" class="setup"><div><p class="kicker">PRIVATE SHEET CONNECTION</p><h1>Connect Google Sheets</h1><p>Sign in to load balances, income, spending, and budget. Data stays in your browser.</p></div><div class="setup-fields"><label for="client-id">Google OAuth client ID</label><input id="client-id" autocomplete="off" placeholder="…apps.googleusercontent.com"><label for="sheet-id">Spreadsheet ID</label><input id="sheet-id" autocomplete="off" placeholder="ID from the Google Sheets URL"><button id="connect" class="button primary">Connect Google account</button><p id="connect-error" class="error" role="alert"></p></div></section>
+<section id="setup" class="setup"><div><p class="kicker">PRIVATE SHEET CONNECTION</p><h1>Connect Google Sheets</h1><p>Sign in to load current balances, income, spending, and budget.</p></div><div class="setup-fields"><label for="client-id">Google OAuth client ID</label><input id="client-id" autocomplete="off" placeholder="…apps.googleusercontent.com"><label for="sheet-id">Spreadsheet ID</label><input id="sheet-id" autocomplete="off" placeholder="ID from the Google Sheets URL"><button id="connect" class="button primary">Connect Google account</button><p id="connect-error" class="error" role="alert"></p><div class="snapshot-access"><p class="kicker">NO GOOGLE SIGN-IN</p><h2>Open saved snapshot</h2><p>View the last encrypted copy. Its date appears after you unlock it.</p><label for="snapshot-password">Recovery key</label><input id="snapshot-password" type="password" autocomplete="off" placeholder="Enter your recovery key"><button id="open-snapshot" class="button light" type="button">Open snapshot</button><p id="snapshot-error" class="error" role="alert"></p></div></div></section>
 <div id="dashboard" hidden>
+<div id="snapshot-banner" class="snapshot-banner" hidden>Saved snapshot from <strong id="snapshot-date"></strong>. Values may be out of date.</div>
 <div class="page-heading"><div><p class="kicker">PERSONAL FINANCE</p><h1>Financial overview</h1><p id="period-subtitle" class="muted"></p></div><div class="select-wrap"><label for="period">Balance snapshot</label><select id="period"></select></div></div>
 <nav class="tabs" aria-label="Dashboard sections"><button class="tab active" data-tab="overview" type="button">Overview</button><button class="tab" data-tab="assets" type="button">Assets & liabilities</button><button class="tab" data-tab="spending" type="button">Income & spending</button><button class="tab" data-tab="budget" type="button">Budget planner</button></nav>
 <section id="view-overview" class="view">

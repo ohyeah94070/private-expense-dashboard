@@ -1,5 +1,5 @@
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
-const RANGES = ["Stmt!A1:U54", "Budget!A1:J100", "'Income & Transfers'!A1:O300", "'Large exp.'!A1:C500", "'Ex. Rate'!A1:D400"];
+const RANGES = ["Stmt!A1:U54", "Budget!A1:J100", "'Income & Transfers'!A1:O300", "'Large exp.'!A1:C500"];
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
 const num = value => value === "" || value == null ? NaN : Number(value);
@@ -25,6 +25,7 @@ let tokenClient, accessToken, raw = {}, periods = [], budgetRows = [], budgetPla
 
 $("client-id").value = localStorage.getItem("expense-google-client-id") || "";
 $("sheet-id").value = localStorage.getItem("expense-sheet-id") || "";
+const bytesFromBase64 = value => Uint8Array.from(atob(value), character => character.charCodeAt(0));
 
 $("connect").addEventListener("click", () => {
   const clientId = $("client-id").value.trim(), sheetId = $("sheet-id").value.trim();
@@ -40,6 +41,32 @@ $("connect").addEventListener("click", () => {
     await loadData();
   }});
   tokenClient.requestAccessToken({prompt:""});
+});
+$("open-snapshot").addEventListener("click", async () => {
+  const recoveryKey = $("snapshot-password").value.trim().toUpperCase();
+  $("snapshot-error").textContent = "";
+  if (!recoveryKey) { $("snapshot-error").textContent = "Enter the recovery key."; return; }
+  const button = $("open-snapshot"); button.disabled = true;
+  try {
+    const response = await fetch("./snapshot.enc.json", {cache:"no-store"});
+    if (!response.ok) throw new Error("Saved snapshot is unavailable.");
+    const snapshot = await response.json();
+    if (snapshot.version !== 1 || snapshot.kdf?.iterations !== 600000 || snapshot.kdf?.hash !== "SHA-256" || snapshot.cipher?.name !== "AES-256-GCM") throw new Error("Unsupported saved snapshot.");
+    const baseKey = await crypto.subtle.importKey("raw", new TextEncoder().encode(recoveryKey), "PBKDF2", false, ["deriveKey"]);
+    const key = await crypto.subtle.deriveKey({name:"PBKDF2",hash:"SHA-256",iterations:600000,salt:bytesFromBase64(snapshot.kdf.salt)},baseKey,{name:"AES-GCM",length:256},false,["decrypt"]);
+    const decrypted = await crypto.subtle.decrypt({name:"AES-GCM",iv:bytesFromBase64(snapshot.cipher.iv)},key,bytesFromBase64(snapshot.cipher.data));
+    const payload = JSON.parse(new TextDecoder().decode(decrypted));
+    if (!payload.raw || !Number.isFinite(Date.parse(payload.createdAt))) throw new Error("Saved snapshot is invalid.");
+    raw = payload.raw;
+    extract();
+    $("snapshot-password").value = "";
+    $("setup").hidden = true; $("dashboard").hidden = false; $("refresh").hidden = true;
+    const snapshotDate = new Intl.DateTimeFormat("en-GB",{day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",timeZone:"Asia/Hong_Kong"}).format(new Date(payload.createdAt)) + " HKT";
+    $("snapshot-date").textContent = snapshotDate; $("snapshot-banner").hidden = false;
+    $("sync-time").textContent = "Saved snapshot · " + snapshotDate;
+    renderAll();
+  } catch(e) { $("snapshot-error").textContent = e.name === "OperationError" ? "Incorrect recovery key." : e.message || "Unable to open the saved snapshot."; }
+  finally { button.disabled = false; }
 });
 $("refresh").addEventListener("click",async () => { if (accessToken) await loadData(); else $("connect").click(); });
 $("disconnect").addEventListener("click",() => {
@@ -99,7 +126,7 @@ async function loadData() {
     if (epoch !== loadEpoch) return;
     raw = Object.fromEntries(data.valueRanges.map((item,i) => [RANGES[i].split("!")[0].replaceAll("'",""),item.values || []]));
     extract();
-    $("setup").hidden = true; $("dashboard").hidden = false; error("");
+    $("setup").hidden = true; $("dashboard").hidden = false; $("refresh").hidden = false; $("snapshot-banner").hidden = true; error("");
     $("sync-time").textContent = "Updated " + new Intl.DateTimeFormat("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"Asia/Hong_Kong"}).format(new Date()) + " HKT";
     renderAll();
   } catch(e) { if (epoch === loadEpoch) error(e.message || "Unable to load sheet data."); }
