@@ -38,6 +38,12 @@ $("open-snapshot").addEventListener("click", async()=>{
   } catch(e) { $("snapshot-error").textContent=e.name==="OperationError"?"Incorrect recovery key.":e.message; }
 });
 $("save-snapshot").addEventListener("click",()=>publishSnapshot());
+$("generate-snapshot-key").addEventListener("click",()=>{
+  const alphabet="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const random=crypto.getRandomValues(new Uint8Array(32));
+  $("snapshot-save-key").value=Array.from(random,b=>alphabet[b%alphabet.length]).join("").match(/.{1,4}/g).join("-");
+  $("snapshot-save-status").textContent="Copy and keep this key. It is required to open the snapshot later.";
+});
 
 async function publishSnapshot() {
   if(!latestRaw) return $("snapshot-save-status").textContent="Connect Google first to load current data.";
