@@ -1,6 +1,6 @@
 # Finance Review
 
-Interactive GitHub Pages dashboard for the private “Finance — Expense Review & Improved Reconciliation” Google Sheet. The repository contains code only. No financial rows, OAuth access tokens, or client secrets are committed.
+Interactive GitHub Pages dashboard for the private “Finance — Expense Review & Improved Reconciliation” Google Sheet. The repository contains code and one encrypted snapshot. No plaintext financial rows, OAuth access tokens, or client secrets are committed.
 
 ## Views
 
@@ -19,6 +19,6 @@ GitHub Pages serves public frontend code. A client-side PIN would not protect th
 
 ## Saved snapshot without Google sign-in
 
-The setup screen can open `snapshot.enc.json` with a separate recovery key when Google sign-in is unavailable. The file contains a point-in-time copy of the Sheet's value ranges, encrypted with AES-256-GCM and a randomly generated 100-bit recovery key derived through PBKDF2-SHA-256 (600,000 iterations). The key is never committed or stored by the website. The decrypted data and key remain in browser memory only, and Disconnect clears the page. The dashboard displays the authenticated snapshot timestamp so it is never presented as live data.
+The setup screen can open `snapshot.enc.json` with a separate recovery key when Google sign-in is unavailable. The file contains a point-in-time copy of the Sheet's value ranges, encrypted with AES-256-GCM and a randomly generated 12-letter uppercase recovery key derived through PBKDF2-SHA-256 (600,000 iterations). The key is never committed or stored by the website. The decrypted data and key remain in browser memory only, and Disconnect clears the page. The dashboard displays the authenticated snapshot timestamp so it is never presented as live data.
 
-This snapshot must be refreshed manually from an authorized environment. `scripts/build-snapshot.mjs` accepts an object with a `raw` map of the four required Sheet value ranges on standard input, writes only the encrypted output file, and prints a new recovery key. Rebuilding rotates the key. Never put plaintext Sheet exports or the recovery key in Git.
+GitHub Actions refreshes the encrypted snapshot daily at 03:17 HKT. The workflow reads only this private spreadsheet through a dedicated Google service account, encrypts the four value ranges using a fixed recovery key from GitHub Actions secrets, commits the ciphertext, and requests a Pages rebuild. The service account must have Viewer access to this spreadsheet only. `scripts/build-snapshot.mjs` can also rebuild manually from an object containing the `raw` map on standard input; without `EXPENSE_SNAPSHOT_KEY` it generates a new key. Never put plaintext Sheet exports, service-account credentials, or the recovery key in Git.

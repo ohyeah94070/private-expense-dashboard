@@ -1,0 +1,46 @@
+name: Daily encrypted expense snapshot
+
+on:
+  schedule:
+    - cron: '17 19 * * *' # 03:17 HKT daily
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: daily-expense-snapshot
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build encrypted snapshot
+        run: node scripts/scheduled-backup.mjs
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          EXPENSE_SHEET_ID: ${{ secrets.EXPENSE_SHEET_ID }}
+          EXPENSE_SNAPSHOT_KEY: ${{ secrets.EXPENSE_SNAPSHOT_KEY }}
+      - name: Commit encrypted snapshot
+        run: |
+          git config user.name "Expense Snapshot Bot"
+          git config user.email "ohyeah94070@users.noreply.github.com"
+          git add -- snapshot.enc.json
+          git commit -m "Update encrypted expense snapshot"
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Publish updated Pages snapshot
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl --fail-with-body --silent --show-error --request POST \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header "X-GitHub-Api-Version: 2026-03-10" \
+            "https://api.github.com/repos/${{ github.repository }}/pages/builds"
