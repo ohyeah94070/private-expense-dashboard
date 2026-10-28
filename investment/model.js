@@ -28,8 +28,17 @@
       month: text(r[0]), trades: n(r[1]), deposits: n(r[2]), withdrawals: n(r[3]),
       dividends: n(r[4]), interest: n(r[5]), tax: n(r[6]), realized: n(r[7])
     }));
+    const history=rows(p[13]).slice(1).filter(r=>/^\d{4}-\d{2}$/.test(text(r[0]))).map(r=>({
+      month:text(r[0]),equityUSD:n(r[1]),cashUSD:n(r[2]),cashHKD:n(r[3]),fx:n(r[4]),
+      equityHKD:n(r[5]),cashTotalHKD:n(r[6]),totalHKD:n(r[7]),unrealizedHKD:n(r[8]),
+      realizedUSD:n(r[9]),totalPL:n(r[10]),netFundingHKD:n(r[11])
+    }));
+    const valuations=rows(p[14]).slice(1).filter(r=>/^\d{4}-\d{2}$/.test(text(r[0]))).map(r=>({
+      month:text(r[0]),symbol:text(r[1]),shares:n(r[2]),close:n(r[3]),marketValue:n(r[4]),
+      costBasis:n(r[7]),unrealized:n(r[8])
+    }));
     return {
-      positions, trades, cash, months,
+      positions, trades, cash, months, history, valuations,
       fx: value(p[12]),
       metrics: {
         totalHKD: value(p[4]), equityHKD: value(p[5]), cashHKD: value(p[6]),

@@ -5,7 +5,8 @@ const PORTFOLIO_RANGES = [
   "'Positions'!A4:I1000", "'Trades'!A4:L1000", "'Cash Ledger'!A4:I1000",
   "'Monthly Activity'!A4:H100", "'Dashboard'!A6", "'Dashboard'!C6",
   "'Dashboard'!E6", "'Dashboard'!A10", "'Dashboard'!C10", "'Dashboard'!E10",
-  "'Dashboard'!G10", "'Dashboard'!I10", "'README'!B18"
+  "'Dashboard'!G10", "'Dashboard'!I10", "'README'!B18",
+  "'Monthly Summary'!A1:L100", "'Monthly Valuation'!A1:I100"
 ];
 const $ = id => document.getElementById(id);
 const esc = x => String(x ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -13,7 +14,7 @@ const money = (x, ccy="HKD") => Number.isFinite(x) ? `${x<0?"(":""}${ccy==="HKD"
 const number = (x, decimals=0) => Number.isFinite(x) ? new Intl.NumberFormat("en-HK",{minimumFractionDigits:decimals,maximumFractionDigits:decimals}).format(x) : "—";
 const percent = x => Number.isFinite(x) ? new Intl.NumberFormat("en-HK",{style:"percent",maximumFractionDigits:2,minimumFractionDigits:1}).format(x) : "—";
 const signClass = x => Number.isFinite(x) ? (x < 0 ? "negative" : x > 0 ? "positive" : "") : "";
-let tokenClient, token, data, latestRaw, activeTab="overview", epoch=0;
+let tokenClient, token, data, activeTab="overview", epoch=0;
 
 $("connect").addEventListener("click", connect);
 $("refresh").addEventListener("click", () => token ? load() : connect());
@@ -22,7 +23,7 @@ document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () =>
 document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => showTab(b.dataset.go)));
 for(const id of ["trade-asset","trade-search"]) $(id).addEventListener(id.endsWith("search")?"input":"change", renderTrades);
 for(const id of ["cash-type","cash-search"]) $(id).addEventListener(id.endsWith("search")?"input":"change", renderCash);
-$("pnl-period").addEventListener("change", renderPnL);
+$("overview-period").addEventListener("change", render);
 $("open-snapshot").addEventListener("click", async()=>{
   $("snapshot-error").textContent="";
   try {
@@ -37,22 +38,6 @@ $("open-snapshot").addEventListener("click", async()=>{
     render();
   } catch(e) { $("snapshot-error").textContent=e.name==="OperationError"?"Incorrect recovery key.":e.message; }
 });
-$("save-snapshot").addEventListener("click",()=>publishSnapshot());
-$("generate-snapshot-key").addEventListener("click",()=>{
-  const alphabet="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const random=crypto.getRandomValues(new Uint8Array(32));
-  $("snapshot-save-key").value=Array.from(random,b=>alphabet[b%alphabet.length]).join("").match(/.{1,4}/g).join("-");
-  $("snapshot-save-status").textContent="Copy and keep this key. It is required to open the snapshot later.";
-});
-
-async function publishSnapshot() {
-  if(!latestRaw) return $("snapshot-save-status").textContent="Connect Google first to load current data.";
-  $("snapshot-save-status").textContent="Encrypting and updating GitHub…";
-  try {
-    await Snapshot.publish(latestRaw,$("snapshot-save-key").value.trim(),$("snapshot-token").value.trim());
-    $("snapshot-save-status").textContent="Encrypted snapshot updated in GitHub.";
-  } catch(e) { $("snapshot-save-status").textContent=e.message||"Snapshot update failed."; }
-}
 
 function setError(message) { $("connect-error").textContent = message; }
 function connect() {
@@ -90,12 +75,11 @@ async function load() {
     if (current!==epoch) return;
     const next = PortfolioModel.parse(portfolio);
     if (!next.positions.length || !Number.isFinite(next.metrics.totalHKD)) throw new Error("The brokerage sheet did not return its expected position and dashboard data.");
-    data=next; latestRaw=portfolio;
+    data=next;
     $("setup").hidden=true; $("app").hidden=false;
     $("refresh").hidden=false; $("disconnect").hidden=false;
     $("sync-status").textContent="Refreshed "+new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Hong_Kong",hour:"2-digit",minute:"2-digit"}).format(new Date())+" HKT";
     render();
-    if($("snapshot-save-key").value&&$("snapshot-token").value) await publishSnapshot();
   } catch(e) {
     if (current!==epoch) return;
     const message=e.message || "Could not load the sheets.";
@@ -107,7 +91,7 @@ async function load() {
 
 function disconnect() {
   const old=token;
-  ++epoch; token=undefined; data=undefined; latestRaw=undefined;
+  ++epoch; token=undefined; data=undefined;
   const finish=()=>location.reload();
   if(old && window.google?.accounts?.oauth2) google.accounts.oauth2.revoke(old,finish);
   setTimeout(finish,1200);
@@ -119,20 +103,27 @@ function showTab(name) {
   location.hash=name;
 }
 function render() {
-  $("hero-subtitle").textContent=`IBKR positions ${data.asOf || "—"} · Cash activity through ${data.cashThrough || "—"} · Webull data pending`;
-  $("total-value").textContent=money(data.metrics.totalHKD);
-  $("equity-value").textContent=money(data.metrics.equityHKD);
-  $("unrealized-value").textContent=money(data.metrics.unrealizedHKD);
-  $("realized-value").textContent=money(data.metrics.realizedHKD);
+  const selector=$("overview-period"),prior=selector.value;
+  selector.innerHTML='<option value="current">Current position + 2026 activity</option>'+data.history.map(x=>`<option value="${esc(x.month)}">${esc(x.month)}</option>`).join("");
+  selector.value=[...selector.options].some(x=>x.value===prior)?prior:"current";
+  const selected=data.history.find(x=>x.month===selector.value),fx=selected?.fx??data.fx;
+  $("hero-subtitle").textContent=selected?`${selected.month} month end · shares and cash reconstructed from IBKR records`:`IBKR positions ${data.asOf || "—"} · Cash activity through ${data.cashThrough || "—"} · Webull data pending`;
+  $("total-value").textContent=selected?money(selected.totalHKD):money(data.metrics.totalHKD);
+  $("equity-value").textContent=selected?money(selected.equityHKD):money(data.metrics.equityHKD);
+  $("unrealized-value").textContent=selected?money(selected.unrealizedHKD):money(data.metrics.unrealizedHKD);
+  $("realized-value").textContent=selected?money(selected.realizedUSD*fx):money(data.metrics.realizedHKD);
+  $("period-pnl").textContent=selected?money(selected.totalPL):money(data.metrics.realizedHKD+data.metrics.unrealizedHKD+data.metrics.dividendsHKD+data.metrics.interestHKD+data.metrics.taxHKD);
+  $("period-pnl-label").textContent=selected?"Monthly total P/L":"Displayed component total";
   $("unrealized-value").className=signClass(data.metrics.unrealizedHKD);
   $("realized-value").className=signClass(data.metrics.realizedHKD);
-  $("overview-note").textContent=`Top values match the Brokerage Portfolio Tracker Dashboard. USD amounts are shown in HKD using its reference rate (${number(data.fx,4)} HKD per USD). Equity and cash snapshots have different dates; this is not a YTD return.`;
+  $("overview-note").textContent=selected?"Historical values are reconstructed from the current IBKR position and cash snapshot, subsequent transactions, Alpaca SIP month-end closes and ECB FX reference rates. They assume no unrecorded share or cash changes. January total P/L needs a December opening value.":`Top values match the Brokerage Portfolio Tracker Dashboard. USD amounts are shown in HKD using its reference rate (${number(data.fx,4)} HKD per USD). Equity and cash snapshots have different dates; this is not a YTD return.`;
   renderAllocation(); renderPnL(); renderMonthlyBars(); renderHoldings(); renderMonthly(); renderTrades(); renderCash();
   if(["overview","holdings","activity","watchlist"].includes(location.hash.slice(1))) showTab(location.hash.slice(1));
   else showTab(activeTab);
 }
 function renderAllocation() {
-  const holdings=[...data.positions].filter(x=>x.shares>0).sort((a,b)=>b.marketValue-a.marketValue);
+  const period=$("overview-period").value;
+  const holdings=period==="current"?[...data.positions].filter(x=>x.shares>0).sort((a,b)=>b.marketValue-a.marketValue):data.valuations.filter(x=>x.month===period&&x.shares>0).map(x=>({symbol:x.symbol,marketValue:x.marketValue})).sort((a,b)=>b.marketValue-a.marketValue);
   const total=holdings.reduce((s,x)=>s+(Number.isFinite(x.marketValue)?x.marketValue:0),0);
   $("allocation").innerHTML=holdings.map(x=>{
     const share=total>0 ? x.marketValue/total : 0;
@@ -142,21 +133,19 @@ function renderAllocation() {
 }
 function renderPnL() {
   const m=data.metrics;
-  const picker=$("pnl-period"), previous=picker.value;
-  picker.innerHTML='<option value="all">2026 + current positions</option>'+data.months.map(x=>`<option value="${esc(x.month)}">${esc(x.month)}</option>`).join("");
-  picker.value=[...picker.options].some(x=>x.value===previous)?previous:"all";
+  const period=$("overview-period").value;
   let items,note;
-  if(picker.value==="all") {
+  if(period==="current") {
     items=[["Realized stock P/L · 2026",m.realizedHKD],["Unrealized position P/L · current",m.unrealizedHKD],["Dividends · 2026",m.dividendsHKD],["Interest · 2026",m.interestHKD],["Withholding tax · 2026",m.taxHKD]];
     note="Component sum combines 2026 realized cash results with the current unrealized position result. It is not a period return.";
   } else {
-    const x=data.months.find(row=>row.month===picker.value);
-    const fx=Number.isFinite(data.fx)?data.fx:NaN;
+    const x=data.months.find(row=>row.month===period);
+    const fx=data.history.find(row=>row.month===period)?.fx;
     items=[["Realized stock P/L",x.realized*fx],["Dividends",x.dividends*fx],["Interest",x.interest*fx],["Withholding tax",x.tax*fx]];
-    note="Monthly total covers realized stock P/L and cash income only. Month-end mark-to-market P/L needs an IBKR monthly statement.";
+    note="Monthly total P/L uses the change in reconstructed account value after deposits and withdrawals. The component rows show reported realized income and trading results.";
   }
-  const total=items.reduce((s,[,v])=>s+(Number.isFinite(v)?v:0),0);
-  $("pnl-breakdown").innerHTML=items.map(([label,val])=>`<div class="pnl-row"><span>${esc(label)}</span><strong class="${signClass(val)}">${money(val)}</strong></div>`).join("")+`<div class="pnl-row pnl-total"><span>Total of shown components</span><strong class="${signClass(total)}">${money(total)}</strong></div>`;
+  const total=period==="current"?items.reduce((s,[,v])=>s+(Number.isFinite(v)?v:0),0):data.history.find(x=>x.month===period)?.totalPL;
+  $("pnl-breakdown").innerHTML=items.map(([label,val])=>`<div class="pnl-row"><span>${esc(label)}</span><strong class="${signClass(val)}">${money(val)}</strong></div>`).join("")+`<div class="pnl-row pnl-total"><span>${period==="current"?"Total of shown components":"Monthly total P/L · funding adjusted"}</span><strong class="${signClass(total)}">${money(total)}</strong></div>`;
   $("pnl-note").textContent=note;
 }
 function renderMonthlyBars() {

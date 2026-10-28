@@ -8,9 +8,9 @@
   <meta name="description" content="Private investment performance dashboard with online market quotes.">
   <link rel="stylesheet" href="./style.css?v=1">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./model.js?v=1" defer></script>
-  <script src="./snapshot.js?v=1" defer></script>
-  <script src="./app.js?v=3" defer></script>
+  <script src="./model.js?v=2" defer></script>
+  <script src="./snapshot.js?v=2" defer></script>
+  <script src="./app.js?v=4" defer></script>
 </head>
 <body>
 <div class="shell">
@@ -27,13 +27,12 @@
 
     <div id="app" hidden>
       <div id="snapshot-banner" class="source-note" hidden><strong>Saved snapshot</strong><span id="snapshot-date"></span></div>
-      <section class="hero"><div><p class="eyebrow">PERSONAL INVESTMENTS</p><h1>Portfolio overview</h1><p id="hero-subtitle" class="muted"></p></div><div class="source-pills"><span>IBKR <i class="live-dot"></i></span><span id="webull-pill">Webull pending</span><span>TradingView market view</span></div></section>
+      <section class="hero"><div><p class="eyebrow">PERSONAL INVESTMENTS</p><h1>Portfolio overview</h1><p id="hero-subtitle" class="muted"></p></div><div><label for="overview-period">Reporting period</label><select id="overview-period"><option value="current">Current position + 2026 activity</option></select><div class="source-pills"><span>IBKR <i class="live-dot"></i></span><span id="webull-pill">Webull pending</span><span>TradingView market view</span></div></div></section>
       <nav class="tabs" aria-label="Dashboard sections"><button class="tab active" data-tab="overview" type="button">Overview</button><button class="tab" data-tab="holdings" type="button">Holdings</button><button class="tab" data-tab="activity" type="button">Trades & cash</button><button class="tab" data-tab="watchlist" type="button">Watchlist</button></nav>
-      <details class="panel" style="margin-bottom:18px"><summary>Encrypted GitHub snapshot</summary><p class="panel-note">Enter a recovery key and a fine-grained GitHub token with Contents write access to this repository. Keep both private. While this tab is open, each successful Google refresh updates the encrypted copy in GitHub.</p><div class="filters"><input id="snapshot-save-key" type="text" autocomplete="off" placeholder="Recovery key" aria-label="Snapshot recovery key"><button id="generate-snapshot-key" class="button" type="button">Generate key</button><input id="snapshot-token" type="password" autocomplete="off" placeholder="GitHub write token" aria-label="GitHub write token"><button id="save-snapshot" class="button" type="button">Save encrypted copy</button></div><p id="snapshot-save-status" class="panel-note"></p></details>
 
       <section id="view-overview" class="view">
-        <div class="metrics"><article class="metric featured"><span>Total account value</span><strong id="total-value">—</strong><small>Approximate HKD · equities + cash</small></article><article class="metric"><span>Equity value</span><strong id="equity-value">—</strong><small>HKD equivalent</small></article><article class="metric"><span>Current unrealized P/L</span><strong id="unrealized-value">—</strong><small>Position gain or loss</small></article><article class="metric"><span>2026 realized stock P/L</span><strong id="realized-value">—</strong><small>Completed stock trades</small></article></div>
-        <div class="panel-grid"><article class="panel"><div class="panel-head"><div><p class="eyebrow">PORTFOLIO</p><h2>Where the value sits</h2></div><button class="text-link" data-go="holdings" type="button">View holdings →</button></div><div id="allocation" class="allocation"></div></article><article class="panel"><div class="panel-head"><div><p class="eyebrow">PROFIT & LOSS</p><h2>What drives the result</h2></div><select id="pnl-period" aria-label="Profit and loss period"><option value="all">2026 + current positions</option></select></div><div id="pnl-breakdown" class="pnl-breakdown"></div><p id="pnl-note" class="panel-note"></p></article></div>
+        <div class="metrics"><article class="metric featured"><span>Total account value</span><strong id="total-value">—</strong><small>HKD · equities + cash</small></article><article class="metric"><span>Equity value</span><strong id="equity-value">—</strong><small>HKD equivalent</small></article><article class="metric"><span>Unrealized P/L</span><strong id="unrealized-value">—</strong><small>Open position gain or loss</small></article><article class="metric"><span>Realized stock P/L</span><strong id="realized-value">—</strong><small>Completed stock trades</small></article><article class="metric"><span id="period-pnl-label">Displayed component total</span><strong id="period-pnl">—</strong><small>HKD · see calculation note</small></article></div>
+        <div class="panel-grid"><article class="panel"><div class="panel-head"><div><p class="eyebrow">PORTFOLIO</p><h2>Where the value sits</h2></div><button class="text-link" data-go="holdings" type="button">View holdings →</button></div><div id="allocation" class="allocation"></div></article><article class="panel"><div class="panel-head"><div><p class="eyebrow">PROFIT & LOSS</p><h2>What drives the result</h2></div></div><div id="pnl-breakdown" class="pnl-breakdown"></div><p id="pnl-note" class="panel-note"></p></article></div>
         <article class="panel"><div class="panel-head"><div><p class="eyebrow">2026</p><h2>Monthly activity</h2></div><button class="text-link" data-go="activity" type="button">Explore records →</button></div><div id="monthly-bars" class="monthly-bars"></div><p class="panel-note">Bars show trade counts. Cash and P/L amounts are available in Trades & cash.</p></article>
         <div class="source-note"><strong>Reading the numbers</strong><span id="overview-note">—</span></div>
       </section>
