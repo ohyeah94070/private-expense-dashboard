@@ -13,6 +13,8 @@ The Overview period selector uses IBKR official month-end NAV for Total Account 
 
 The P/L panel distinguishes the **month-end unrealized stock P/L balance** from its **change during the month**. A positive balance can fall during a losing month. The monthly breakdown shows realized stock P/L, dividends, interest, tax and an FX/fees/valuation reconciliation amount; these sum to monthly total P/L. The Overview monthly cards show each completed month's funding-adjusted result, not trade counts.
 
+Labels use **this month** for monthly flows and changes, **2026 YTD** for the available calendar-year records, and **cumulative open-position P/L** for gains on shares still held since their purchase. The available records do not support a true account-lifetime P/L label.
+
 ## Encrypted GitHub snapshot
 
 `investment/snapshot.enc.json` is an encrypted point-in-time copy of the private Sheet. The website opens it with a recovery key when Google access is unavailable. The ciphertext is public, but the key is not stored in the repository. Google sign-in does not itself refresh this GitHub file; an authorized update must republish it.
