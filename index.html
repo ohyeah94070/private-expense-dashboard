@@ -5,11 +5,11 @@
 <meta name="theme-color" content="#101d24"><title>Finance Review</title>
 <link rel="stylesheet" href="./style.css?v=20261028-4">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script src="./app.js?v=20261028-4" defer></script>
+<script src="./app.js?v=20261028-5" defer></script>
 </head>
 <body>
 <div class="app-shell">
-<header class="topbar"><div class="brand"><span class="brand-icon">◈</span><span>FINANCE <b>REVIEW</b></span></div><div class="top-actions"><span id="sync-time">Not connected</span><button id="refresh" class="button ghost">Refresh data</button><button id="disconnect" class="button ghost">Sign out</button></div></header>
+<header class="topbar"><div class="brand"><span class="brand-icon">◈</span><span>FINANCE <b>REVIEW</b></span></div><div class="top-actions"><span id="sync-time">Not connected</span><button id="refresh" class="button ghost">Refresh data</button><button id="disconnect" class="button ghost">Disconnect</button></div></header>
 <main>
 <section id="setup" class="setup"><div><p class="kicker">PRIVATE SHEET CONNECTION</p><h1>Connect Google Sheets</h1><p>Sign in to load balances, reconciliation, itemized large expenses, and budget. Data stays in your browser.</p></div><div class="setup-fields"><label for="client-id">Google OAuth client ID</label><input id="client-id" autocomplete="off" placeholder="…apps.googleusercontent.com"><label for="sheet-id">Spreadsheet ID</label><input id="sheet-id" autocomplete="off" placeholder="ID from the Google Sheets URL"><button id="connect" class="button primary">Connect Google account</button><p id="connect-error" class="error" role="alert"></p></div></section>
 <div id="dashboard" hidden>

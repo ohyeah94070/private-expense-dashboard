@@ -21,7 +21,7 @@ const fmtOriginal = (value,ccy) => {
 };
 const nowHK = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Hong_Kong",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
 const dayNow = Math.floor((Date.parse(nowHK + "T00:00:00Z") - Date.UTC(1899,11,30))/86400000);
-let tokenClient, accessToken, raw = {}, periods = [], budgetRows = [], events = [], activeTab = "overview";
+let tokenClient, accessToken, raw = {}, periods = [], budgetRows = [], events = [], activeTab = "overview", loadEpoch = 0;
 
 $("client-id").value = localStorage.getItem("expense-google-client-id") || "";
 $("sheet-id").value = localStorage.getItem("expense-sheet-id") || "";
@@ -43,9 +43,17 @@ $("connect").addEventListener("click", () => {
 });
 $("refresh").addEventListener("click",async () => { if (accessToken) await loadData(); else $("connect").click(); });
 $("disconnect").addEventListener("click",() => {
-  if (accessToken && window.google?.accounts?.oauth2) google.accounts.oauth2.revoke(accessToken,()=>{});
+  const tokenToRevoke = accessToken;
+  loadEpoch++;
   accessToken = undefined; raw = {}; periods = []; events = [];
-  $("dashboard").hidden = true; $("setup").hidden = false; $("sync-time").textContent = "Signed out";
+  $("dashboard").replaceChildren();
+  $("dashboard").hidden = true; $("setup").hidden = false; $("sync-time").textContent = "Disconnected";
+  if (tokenToRevoke && window.google?.accounts?.oauth2) {
+    let reloaded = false;
+    const finish = () => { if (!reloaded) { reloaded = true; window.location.reload(); } };
+    google.accounts.oauth2.revoke(tokenToRevoke, finish);
+    setTimeout(finish, 3000);
+  } else window.location.reload();
 });
 $("period").addEventListener("change", () => { $("spend-window").value = "period"; renderAll(); });
 document.querySelectorAll(".tab").forEach(button => button.addEventListener("click",() => setTab(button.dataset.tab)));
@@ -69,20 +77,22 @@ function setTab(tab) {
   document.querySelectorAll(".view").forEach(view => view.hidden = view.id !== "view-"+tab);
 }
 async function loadData() {
+  const epoch = loadEpoch, token = accessToken;
   error("Loading sheet data…");
   const query = new URLSearchParams({valueRenderOption:"UNFORMATTED_VALUE",majorDimension:"ROWS"});
   RANGES.forEach(range => query.append("ranges",range));
   try {
     const sheetId = localStorage.getItem("expense-sheet-id");
-    const response = await fetch("https://sheets.googleapis.com/v4/spreadsheets/"+sheetId+"/values:batchGet?"+query,{headers:{Authorization:"Bearer "+accessToken},cache:"no-store"});
+    const response = await fetch("https://sheets.googleapis.com/v4/spreadsheets/"+sheetId+"/values:batchGet?"+query,{headers:{Authorization:"Bearer "+token},cache:"no-store"});
     if (!response.ok) throw new Error(response.status===403 ? "This account cannot read the sheet, or Sheets API is not enabled." : "Sheet request failed ("+response.status+").");
     const data = await response.json();
+    if (epoch !== loadEpoch) return;
     raw = Object.fromEntries(data.valueRanges.map((item,i) => [RANGES[i].split("!")[0].replaceAll("'",""),item.values || []]));
     extract();
     $("setup").hidden = true; $("dashboard").hidden = false; error("");
     $("sync-time").textContent = "Updated " + new Intl.DateTimeFormat("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"Asia/Hong_Kong"}).format(new Date()) + " HKT";
     renderAll();
-  } catch(e) { error(e.message || "Unable to load sheet data."); }
+  } catch(e) { if (epoch === loadEpoch) error(e.message || "Unable to load sheet data."); }
 }
 function extract() {
   const s = raw.Stmt || [], oldEnd = periods[Number($("period").value)]?.end;
