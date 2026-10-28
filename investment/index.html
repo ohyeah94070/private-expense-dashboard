@@ -6,11 +6,11 @@
   <meta name="theme-color" content="#10283c">
   <title>Investment Review</title>
   <meta name="description" content="Private investment performance dashboard with monthly portfolio results.">
-  <link rel="stylesheet" href="./style.css?v=4">
+  <link rel="stylesheet" href="./style.css?v=5">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="./model.js?v=6" defer></script>
   <script src="./snapshot.js?v=2" defer></script>
-  <script src="./app.js?v=10" defer></script>
+  <script src="./app.js?v=11" defer></script>
 </head>
 <body>
 <div class="shell">
@@ -56,7 +56,7 @@
 
       <section id="view-watchlist" class="view" hidden>
         <div class="section-title"><div><p class="eyebrow">MARKET WATCH</p><h2>Stocks, ETFs & indices</h2></div><span id="market-updated" class="muted">Quote time unavailable</span></div>
-        <div id="market-cards" class="market-grid" aria-live="polite"></div>
+        <article class="panel market-panel"><div class="table-wrap"><table class="market-table"><thead><tr><th>Symbol</th><th class="numeric">Latest price</th><th class="numeric">1D change</th><th class="numeric">1W change</th><th>52W range</th><th>Updated at</th></tr></thead><tbody id="market-rows" aria-live="polite"></tbody></table></div></article>
         <p id="market-status" class="data-note">Connect Google to load market quotes.</p>
         <p class="data-note">S&amp;P 500 and Nasdaq 100 are index quotes. Prices and changes come from Google Finance through your private Google Sheet. Quote times are shown as reported by the source and may be delayed.</p>
       </section>
