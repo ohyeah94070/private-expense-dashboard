@@ -37,7 +37,9 @@ $("monthly-bars").addEventListener("click", event => {
 $("open-snapshot").addEventListener("click", async()=>{
   $("snapshot-error").textContent="";
   try {
-    const result=await Snapshot.unlock($("snapshot-open-key").value.trim());
+    const recoveryKey=$("snapshot-open-key").value.trim();
+    if(!/^[A-Za-z]{12}$/.test(recoveryKey)) throw new Error("Enter the 12-letter recovery key (case-sensitive).");
+    const result=await Snapshot.unlock(recoveryKey);
     data=PortfolioModel.parse(result.raw);
     if(!data.positions.length) throw new Error("Saved snapshot has no positions.");
     $("snapshot-open-key").value="";

@@ -23,6 +23,6 @@ The Holdings tab follows the reporting period. Current uses the latest IBKR posi
 
 ## Encrypted GitHub snapshot
 
-`investment/snapshot.enc.json` is an encrypted point-in-time copy of the private Sheet. The website opens it with a recovery key when Google access is unavailable. The ciphertext is public, but the key is not stored in the repository. Google sign-in does not itself refresh this GitHub file; an authorized update must republish it.
+`investment/snapshot.enc.json` is an encrypted point-in-time copy of the private Sheet. The website opens it with a case-sensitive 12-letter recovery key when Google access is unavailable. The ciphertext is public, but the key is not stored in the repository. A daily Codex automation reads the private Sheet, encrypts it with the locally DPAPI-protected key, and publishes changes to GitHub. It runs on this Windows computer and requires its Google Drive connection and Git push access; opening the website does not itself write to GitHub.
 
 Local checks: `node --check app.js`, `node --check model.js`, `node model.test.js`.
