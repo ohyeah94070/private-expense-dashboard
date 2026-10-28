@@ -116,7 +116,7 @@ function render() {
   $("period-pnl-label").textContent=selected?"Monthly total P/L":"Displayed component total";
   $("unrealized-value").className=signClass(data.metrics.unrealizedHKD);
   $("realized-value").className=signClass(data.metrics.realizedHKD);
-  $("overview-note").textContent=selected?"Total Account Value is IBKR's official month-end NAV. Equity, cash and unrealized P/L are reconstructed using IBKR historical closes and ECB FX, so their sum may differ slightly from NAV. Monthly P/L subtracts recorded funding; January needs a December opening value.":`Top values match the Brokerage Portfolio Tracker Dashboard. USD amounts are shown in HKD using its reference rate (${number(data.fx,4)} HKD per USD). Equity and cash snapshots have different dates; this is not a YTD return.`;
+  $("overview-note").textContent=selected?"Total Account Value is IBKR's official month-end NAV. Equity, cash and unrealized P/L are reconstructed using IBKR historical closes and ECB FX, so their sum may differ slightly from NAV. Monthly P/L subtracts recorded funding; January needs a December opening value.":`Account value, equity and cash are the 28 Oct IBKR account snapshot. Position prices may have a slightly different quote time. Historical P/L components use ${number(data.fx,4)} HKD per USD; this is not a YTD return.`;
   renderAllocation(); renderPnL(); renderMonthlyBars(); renderHoldings(); renderMonthly(); renderTrades(); renderCash();
   if(["overview","holdings","activity","watchlist"].includes(location.hash.slice(1))) showTab(location.hash.slice(1));
   else showTab(activeTab);
