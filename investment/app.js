@@ -213,18 +213,20 @@ function renderMarket() {
 function renderHoldings() {
   const period=$("overview-period").value, current=period==="current";
   const holdings=PortfolioModel.holdingsForPeriod(data,period);
-  const selected=data.history.find(row=>row.month===period);
+  const cashUSD=PortfolioModel.cashUSDForPeriod(data,period);
   const total=holdings.reduce((s,x)=>s+(Number.isFinite(x.marketValue)?x.marketValue:0),0);
   $("position-count").textContent=number(holdings.length);
   $("holding-total").textContent=money(total,"USD");
-  $("holding-cash").textContent=money(current?data.metrics.cashHKD:selected?.cashTotalHKD);
+  $("holding-cash").textContent=money(cashUSD,"USD");
   $("largest-symbol").textContent=holdings[0]?.symbol||"—";
   $("largest-weight").textContent=holdings[0]&&total>0?`${percent(holdings[0].marketValue/total)} of equity value`:"";
   $("holdings-scope").textContent=current?"CURRENT POSITIONS":"MONTH-END POSITIONS";
   $("holding-asof").textContent=current?(data.asOf?`As of ${data.asOf}`:""):`${period} month end`;
   $("holding-price-head").textContent=current?"Last price":"Month-end close";
-  $("holdings-note").textContent=current?"Position prices and unrealized P/L come from the latest IBKR position snapshot. Webull is pending.":"Historical shares and cost bases are reconstructed from IBKR trades; closing prices come from IBKR daily history. Values are estimates until reconciled with monthly statements.";
-  $("holding-rows").innerHTML=holdings.map(x=>`<tr><td>${esc(x.broker)}</td><td><strong>${esc(x.symbol)}</strong></td><td class="numeric">${number(x.shares)}</td><td class="numeric">${money(x.averageCost,"USD")}</td><td class="numeric">${money(x.lastPrice,"USD")}</td><td class="numeric">${money(x.marketValue,"USD")}</td><td class="numeric ${signClass(x.unrealized)}">${money(x.unrealized,"USD")}</td><td class="numeric">${total>0?percent(x.marketValue/total):"—"}</td></tr>`).join("") || `<tr><td colspan="8" class="empty">No positions available.</td></tr>`;
+  $("holdings-note").textContent=current?"Stock prices and unrealized P/L come from the latest IBKR snapshot. Cash is converted to USD using the displayed portfolio FX rate. Webull is pending.":"Historical shares and cost bases are reconstructed from IBKR trades; closing prices come from IBKR daily history. HKD cash is converted at month-end FX. Values are estimates until reconciled with monthly statements.";
+  const stockRows=holdings.map(x=>`<tr><td>${esc(x.broker)}</td><td><strong>${esc(x.symbol)}</strong></td><td class="numeric">${number(x.shares)}</td><td class="numeric">${money(x.averageCost,"USD")}</td><td class="numeric">${money(x.lastPrice,"USD")}</td><td class="numeric">${money(x.marketValue,"USD")}</td><td class="numeric ${signClass(x.unrealized)}">${money(x.unrealized,"USD")}</td><td class="numeric">${total>0?percent(x.marketValue/total):"—"}</td></tr>`).join("");
+  const cashRow=`<tr class="cash-holding"><td>IBKR</td><td><strong>Cash</strong><small>USD equivalent</small></td><td class="numeric">—</td><td class="numeric">—</td><td class="numeric">—</td><td class="numeric"><strong>${money(cashUSD,"USD")}</strong></td><td class="numeric">—</td><td class="numeric">—</td></tr>`;
+  $("holding-rows").innerHTML=stockRows+cashRow;
 }
 function renderMonthly() {
   $("month-rows").innerHTML=data.months.map(m=>`<tr><td>${esc(m.month)}</td><td class="numeric">${number(m.trades)}</td><td class="numeric">${money(m.deposits)}</td><td class="numeric ${signClass(m.withdrawals)}">${money(m.withdrawals)}</td><td class="numeric">${money(m.dividends,"USD")}</td><td class="numeric ${signClass(m.interest)}">${money(m.interest,"USD")}</td><td class="numeric ${signClass(m.tax)}">${money(m.tax,"USD")}</td><td class="numeric ${signClass(m.realized)}">${money(m.realized,"USD")}</td></tr>`).join("") || `<tr><td colspan="8" class="empty">No monthly data available.</td></tr>`;

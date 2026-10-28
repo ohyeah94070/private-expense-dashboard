@@ -49,6 +49,11 @@
     }));
     return holdings.filter(x=>x.shares>0).sort((a,b)=>b.marketValue-a.marketValue);
   }
+  function cashUSDForPeriod(data, period) {
+    if(period==="current") return data.fx>0?data.metrics.cashHKD/data.fx:NaN;
+    const month=data.history.find(x=>x.month===period);
+    return month?.fx>0?month.cashUSD+month.cashHKD/month.fx:NaN;
+  }
   function parseMarket(values, now=Date.now()) {
     return values.slice(1).filter(row=>text(row[0])).map(row=>{
       const updatedAt=text(row[7]);
@@ -104,5 +109,5 @@
     };
   }
 
-  return { parse, monthlyBreakdown, stockBreakdown, holdingsForPeriod, parseMarket };
+  return { parse, monthlyBreakdown, stockBreakdown, holdingsForPeriod, cashUSDForPeriod, parseMarket };
 });
