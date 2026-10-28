@@ -6,7 +6,8 @@ const num = (x) => typeof x === "number" ? x : (x === "" || x == null ? NaN : Nu
 const serialDate = (n) => new Date(Date.UTC(1899,11,30) + n * 86400000);
 const dateLabel = (n) => Number.isFinite(n) ? new Intl.DateTimeFormat("zh-HK",{year:"numeric",month:"short",day:"numeric",timeZone:"UTC"}).format(serialDate(n)) : "—";
 const monthKey = (n) => Number.isFinite(n) ? serialDate(n).toISOString().slice(0,7) : "";
-const dayNow = Math.floor((Date.now() - Date.UTC(1899,11,30))/86400000);
+const todayHK = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Hong_Kong",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+const dayNow = Math.floor((Date.parse(`${todayHK}T00:00:00Z`) - Date.UTC(1899,11,30))/86400000);
 let tokenClient, accessToken, raw, periods = [], budgetRows = [];
 
 $("client-id").value = localStorage.getItem("expense-google-client-id") || "";
@@ -75,7 +76,9 @@ function extract() {
 function render() {
   const p = periods[Number($("period").value)];
   if (!p) { $("dashboard").innerHTML = "<p>目前沒有可分析的已完成對帳期間。</p>"; return; }
-  const b = budgetRows.find(row => monthKey(row.month) === monthKey(p.end));
+  const endDate = serialDate(p.end), startDate = serialDate(p.start);
+  const fullCalendarMonth = startDate.getUTCDate() === new Date(Date.UTC(startDate.getUTCFullYear(),startDate.getUTCMonth()+1,0)).getUTCDate() && endDate.getUTCDate() === new Date(Date.UTC(endDate.getUTCFullYear(),endDate.getUTCMonth()+1,0)).getUTCDate() && (endDate.getUTCFullYear()*12+endDate.getUTCMonth()) === (startDate.getUTCFullYear()*12+startDate.getUTCMonth()+1);
+  const b = fullCalendarMonth ? budgetRows.find(row => monthKey(row.month) === monthKey(p.end)) : undefined;
   $("expense").textContent = money(-p.expense);
   $("savings").textContent = money(p.savings);
   $("variance").textContent = b && Number.isFinite(b.surplus) ? money(p.savings-b.surplus) : "—";
@@ -97,7 +100,7 @@ function renderBridge(p) {
   $("bridge").innerHTML = rows.map(([label,value]) => `<div class="bridge-row"><span>${label}</span><strong>${money(value)}</strong></div>`).join("");
 }
 function renderBudget(p,b) {
-  if (!b) { $("budget").innerHTML = "<p class='footnote'>這個對帳期間沒有對應的月度預算。預算自 2026 年 10 月開始。</p>"; return; }
+  if (!b) { $("budget").innerHTML = "<p class='footnote'>這期對帳並非完整曆月，不能直接與整月預算比較。請在每個月底輸入結餘後再比較。</p>"; return; }
   const actual = -p.expense, planned = b.expenses, max=Math.max(actual,planned,1);
   $("budget").innerHTML = [["預算總支出",planned,""],["推算實際花費",actual,"actual"]].map(([label,value,cls]) => `<div class="budget-item"><div class="label"><span>${label}</span><b>${money(value)}</b></div><div class="track"><div class="fill ${cls}" style="width:${Math.min(100,Math.max(0,value/max*100))}%"></div></div></div>`).join("");
 }
