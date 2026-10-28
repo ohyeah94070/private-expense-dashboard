@@ -6,11 +6,11 @@
   <meta name="theme-color" content="#10283c">
   <title>Investment Review</title>
   <meta name="description" content="Private investment performance dashboard with monthly portfolio results.">
-  <link rel="stylesheet" href="./style.css?v=5">
+  <link rel="stylesheet" href="./style.css?v=6">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="./model.js?v=6" defer></script>
   <script src="./snapshot.js?v=2" defer></script>
-  <script src="./app.js?v=11" defer></script>
+  <script src="./app.js?v=12" defer></script>
 </head>
 <body>
 <div class="shell">
@@ -31,7 +31,7 @@
       <nav class="tabs" aria-label="Dashboard sections"><button class="tab active" data-tab="overview" type="button">Overview</button><button class="tab" data-tab="holdings" type="button">Holdings</button><button class="tab" data-tab="activity" type="button">Trades & cash</button><button class="tab" data-tab="watchlist" type="button">Watchlist</button></nav>
 
       <section id="view-overview" class="view">
-        <div class="metrics"><article class="metric featured"><span>Total account value</span><strong id="total-value">—</strong><small>HKD · equities + cash</small></article><article class="metric"><span>Equity value</span><strong id="equity-value">—</strong><small>HKD equivalent</small></article><article class="metric"><span id="unrealized-label">Unrealized P/L · Today</span><strong id="unrealized-value">—</strong><small>Gain or loss on shares still held</small></article><article class="metric"><span id="realized-label">Realized stock P/L · 2026 YTD</span><strong id="realized-value">—</strong><small>Completed stock trades</small></article><article class="metric"><span id="period-pnl-label">2026 results + current open P/L</span><strong id="period-pnl">—</strong><small>HKD · see calculation note</small></article></div>
+        <div class="metrics overview-metrics"><article class="metric featured"><span>Total account value</span><strong id="total-value">—</strong><small>HKD · equities + cash</small></article><article class="metric"><span>Equity value</span><strong id="equity-value">—</strong><small>HKD equivalent</small></article><article class="metric"><span>Cash total</span><strong id="cash-value">—</strong><small>HKD equivalent</small></article><article class="metric"><span id="unrealized-label">Unrealized P/L · Today</span><strong id="unrealized-value">—</strong><small>Gain or loss on shares still held</small></article><article class="metric"><span id="realized-label">Realized stock P/L · 2026 YTD</span><strong id="realized-value">—</strong><small>Completed stock trades</small></article><article class="metric"><span id="period-pnl-label">2026 results + current open P/L</span><strong id="period-pnl">—</strong><small>HKD · see calculation note</small></article></div>
         <div class="panel-grid"><article class="panel"><div class="panel-head"><div><p class="eyebrow">PORTFOLIO</p><h2>Where the value sits</h2></div><button class="text-link" data-go="holdings" type="button">View holdings →</button></div><div id="allocation" class="allocation"></div></article><article class="panel"><div class="panel-head"><div><p class="eyebrow">PROFIT & LOSS</p><h2>What drives the result</h2></div></div><div id="pnl-breakdown" class="pnl-breakdown"></div><p id="pnl-note" class="panel-note"></p></article></div>
         <article class="panel"><div class="panel-head"><div><p class="eyebrow">BY STOCK</p><h2 id="stock-pl-title">Stock P/L by symbol</h2></div></div><div class="table-wrap"><table><thead id="stock-pl-head"></thead><tbody id="stock-pl-rows"></tbody></table></div><p id="stock-pl-note" class="panel-note"></p></article>
         <article class="panel"><div class="panel-head"><div><p class="eyebrow">2026</p><h2>Monthly profit & loss</h2></div></div><div id="monthly-bars" class="monthly-bars"></div><p class="panel-note">HKD profit or loss after recorded deposits and withdrawals. Select a month for the breakdown; January needs a December opening value.</p></article>
@@ -40,7 +40,7 @@
 
       <section id="view-holdings" class="view" hidden>
         <div class="section-title"><div><p id="holdings-scope" class="eyebrow">CURRENT POSITIONS</p><h2>Holdings & allocation</h2></div><span id="holding-asof" class="muted"></span></div>
-        <div class="metrics three"><article class="metric"><span>Open positions</span><strong id="position-count">—</strong></article><article class="metric"><span>Equity value</span><strong id="holding-total">—</strong><small>USD, source currency</small></article><article class="metric"><span>Largest position</span><strong id="largest-symbol">—</strong><small id="largest-weight"></small></article></div>
+        <div class="metrics holding-metrics"><article class="metric"><span>Open positions</span><strong id="position-count">—</strong></article><article class="metric"><span>Equity value</span><strong id="holding-total">—</strong><small>USD, source currency</small></article><article class="metric"><span>Cash total</span><strong id="holding-cash">—</strong><small>HKD equivalent</small></article><article class="metric"><span>Largest position</span><strong id="largest-symbol">—</strong><small id="largest-weight"></small></article></div>
         <article class="panel"><div class="panel-head"><div><p class="eyebrow">POSITION DETAIL</p><h2>Each holding</h2></div></div><div class="table-wrap"><table><thead><tr><th>Broker</th><th>Symbol</th><th class="numeric">Shares</th><th class="numeric">Average cost</th><th id="holding-price-head" class="numeric">Last price</th><th class="numeric">Market value</th><th class="numeric">Unrealized P/L</th><th class="numeric">Weight</th></tr></thead><tbody id="holding-rows"></tbody></table></div></article>
         <p id="holdings-note" class="data-note">Position prices and unrealized P/L come from the latest IBKR position snapshot. Webull is pending.</p>
       </section>

@@ -136,6 +136,7 @@ function render() {
   $("hero-subtitle").textContent=selected?`${selected.month} month end · official IBKR account value; shares and cash reconstructed`:`IBKR positions ${data.asOf || "—"} · Cash activity through ${data.cashThrough || "—"} · Webull data pending`;
   $("total-value").textContent=selected?money(selected.totalHKD):money(data.metrics.totalHKD);
   $("equity-value").textContent=selected?money(selected.equityHKD):money(data.metrics.equityHKD);
+  $("cash-value").textContent=selected?money(selected.cashTotalHKD):money(data.metrics.cashHKD);
   $("unrealized-value").textContent=selected?money(selected.unrealizedHKD):money(data.metrics.unrealizedHKD);
   $("unrealized-label").textContent=selected?"Unrealized P/L · Month End":"Unrealized P/L · Today";
   $("realized-label").textContent=selected?"Realized stock P/L · this month":"Realized stock P/L · 2026 YTD";
@@ -212,9 +213,11 @@ function renderMarket() {
 function renderHoldings() {
   const period=$("overview-period").value, current=period==="current";
   const holdings=PortfolioModel.holdingsForPeriod(data,period);
+  const selected=data.history.find(row=>row.month===period);
   const total=holdings.reduce((s,x)=>s+(Number.isFinite(x.marketValue)?x.marketValue:0),0);
   $("position-count").textContent=number(holdings.length);
   $("holding-total").textContent=money(total,"USD");
+  $("holding-cash").textContent=money(current?data.metrics.cashHKD:selected?.cashTotalHKD);
   $("largest-symbol").textContent=holdings[0]?.symbol||"—";
   $("largest-weight").textContent=holdings[0]&&total>0?`${percent(holdings[0].marketValue/total)} of equity value`:"";
   $("holdings-scope").textContent=current?"CURRENT POSITIONS":"MONTH-END POSITIONS";
