@@ -27,7 +27,7 @@ $("connect").addEventListener("click", () => {
     accessToken = access_token;
     await loadData();
   }});
-  tokenClient.requestAccessToken({prompt:"consent"});
+  tokenClient.requestAccessToken({prompt:""});
 });
 $("refresh").addEventListener("click", async () => { if (accessToken) await loadData(); else $("connect").click(); });
 $("disconnect").addEventListener("click", () => {
