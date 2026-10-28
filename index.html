@@ -1,48 +1,46 @@
 <!doctype html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#10251d">
-  <title>開支羅盤 · Finance Review</title>
-  <link rel="stylesheet" href="./style.css">
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./app.js?v=20261028-3" defer></script>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101d24"><title>Finance Review</title>
+<link rel="stylesheet" href="./style.css?v=20261028-4">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="./app.js?v=20261028-4" defer></script>
 </head>
 <body>
-  <div id="app">
-    <header class="topbar">
-      <div class="wordmark"><span class="brand-mark">◈</span><span>開支羅盤 <small>FINANCE REVIEW</small></span></div>
-      <div class="top-actions"><span id="sync-time" class="sync-time">尚未同步</span><button id="refresh" class="button subtle">重新整理</button><button id="disconnect" class="button subtle">登出</button></div>
-    </header>
-    <main>
-      <section class="hero">
-        <div><p class="eyebrow">MONTHLY MONEY PICTURE</p><h1>每一筆結餘，<br><em>看出花費方向。</em></h1><p class="hero-copy">根據你的 Google Sheets 即時讀取。切換月份、比較預算，追蹤對帳差額。</p></div>
-        <div class="hero-badge"><span>資料來源</span><strong>Google Sheets</strong><small>只有獲授權帳戶能讀取</small></div>
-      </section>
-
-      <section id="setup" class="setup-panel">
-        <div><p class="eyebrow">SECURE CONNECTION</p><h2>連接你的私人試算表</h2><p>資料直接從 Google Sheets 讀入瀏覽器，不會寫入 GitHub。首次使用需填入 Google OAuth 網頁用戶端 ID。</p></div>
-        <div class="setup-controls"><label for="client-id">Google OAuth Client ID</label><input id="client-id" placeholder="xxxx.apps.googleusercontent.com" autocomplete="off"><label for="sheet-id">Google 試算表 ID</label><input id="sheet-id" placeholder="從試算表網址 /d/ 後複製" autocomplete="off"><button id="connect" class="button primary">使用 Google 帳戶連線 →</button><p id="connect-error" class="error" role="alert"></p></div>
-      </section>
-
-      <div id="dashboard" hidden>
-        <section class="controls"><div><p class="eyebrow">EXPLORE</p><h2>花費概覽</h2></div><div class="filter"><label for="period">對帳期間</label><select id="period"></select></div></section>
-        <section class="metrics" aria-label="關鍵數字">
-          <article class="metric featured"><span>推算花費</span><strong id="expense">—</strong><small id="expense-caption">結餘變動減去收入及調整</small></article>
-          <article class="metric"><span>實際儲蓄</span><strong id="savings">—</strong><small>收入加推算花費</small></article>
-          <article class="metric"><span>預算差額</span><strong id="variance">—</strong><small>實際儲蓄 − 預算盈餘</small></article>
-          <article class="metric"><span>期末資產淨值</span><strong id="nav">—</strong><small id="asof">最新結餘</small></article>
-        </section>
-        <section class="grid">
-          <article class="panel wide"><div class="panel-title"><div><p class="eyebrow">TREND</p><h3>各期花費與儲蓄</h3></div><span class="legend"><i class="dot coral"></i>花費 <i class="dot green"></i>儲蓄</span></div><div id="trend" class="chart" role="img" aria-label="各期花費與儲蓄圖"></div></article>
-          <article class="panel"><div class="panel-title"><div><p class="eyebrow">RECONCILIATION</p><h3>本期對帳橋接</h3></div></div><div id="bridge" class="bridge"></div></article>
-          <article class="panel"><div class="panel-title"><div><p class="eyebrow">BUDGET</p><h3>預算與實際</h3></div></div><div id="budget" class="budget-bars"></div></article>
-        </section>
-        <section class="grid lower"><article class="panel wide"><div class="panel-title"><div><p class="eyebrow">DETAILS</p><h3>各期明細</h3></div></div><div class="table-wrap"><table><thead><tr><th>期末日期</th><th>推算花費</th><th>大型支出</th><th>住房</th><th>日常</th><th>實際儲蓄</th></tr></thead><tbody id="period-rows"></tbody></table></div></article><article class="panel"><div class="panel-title"><div><p class="eyebrow">DATA HEALTH</p><h3>資料檢查</h3></div></div><div id="health" class="health"></div></article></section>
-        <p class="footnote">「推算花費」沿用 Stmt 第 48 列的對帳定義，屬結餘推算，可能包含估值變動或未分類調整；它不是逐筆消費紀錄。</p>
-      </div>
-    </main>
-  </div>
+<div class="app-shell">
+<header class="topbar"><div class="brand"><span class="brand-icon">◈</span><span>FINANCE <b>REVIEW</b></span></div><div class="top-actions"><span id="sync-time">Not connected</span><button id="refresh" class="button ghost">Refresh data</button><button id="disconnect" class="button ghost">Sign out</button></div></header>
+<main>
+<section id="setup" class="setup"><div><p class="kicker">PRIVATE SHEET CONNECTION</p><h1>Connect Google Sheets</h1><p>Sign in to load balances, reconciliation, itemized large expenses, and budget. Data stays in your browser.</p></div><div class="setup-fields"><label for="client-id">Google OAuth client ID</label><input id="client-id" autocomplete="off" placeholder="…apps.googleusercontent.com"><label for="sheet-id">Spreadsheet ID</label><input id="sheet-id" autocomplete="off" placeholder="ID from the Google Sheets URL"><button id="connect" class="button primary">Connect Google account</button><p id="connect-error" class="error" role="alert"></p></div></section>
+<div id="dashboard" hidden>
+<div class="page-heading"><div><p class="kicker">PERSONAL FINANCE</p><h1>Financial overview</h1><p id="period-subtitle" class="muted"></p></div><div class="select-wrap"><label for="period">Balance snapshot</label><select id="period"></select></div></div>
+<nav class="tabs" aria-label="Dashboard sections"><button class="tab active" data-tab="overview" type="button">Overview</button><button class="tab" data-tab="assets" type="button">Assets & liabilities</button><button class="tab" data-tab="spending" type="button">Spending detail</button><button class="tab" data-tab="budget" type="button">Budget planner</button></nav>
+<section id="view-overview" class="view">
+<div class="metric-grid"><article class="metric"><span>Net worth</span><strong id="nav">—</strong><small id="nav-change"></small></article><article class="metric"><span>Total assets</span><strong id="total-assets">—</strong><small>All balances in HKD</small></article><article class="metric"><span>Liabilities</span><strong id="total-liabilities">—</strong><small>Accounting balance</small></article><article class="metric accent"><span>Period expense</span><strong id="expense">—</strong><small id="expense-caption"></small></article></div>
+<div class="panel-grid"><article class="panel"><div class="panel-head"><div><p class="kicker">BALANCE SHEET</p><h2>Asset allocation</h2></div><button class="text-button" data-go="assets">Explore assets →</button></div><div id="allocation-summary"></div></article><article class="panel"><div class="panel-head"><div><p class="kicker">RECONCILIATION</p><h2>Where spending went</h2></div><button class="text-button" data-go="spending">Explore spending →</button></div><div id="expense-summary"></div></article></div>
+<article class="panel"><div class="panel-head"><div><p class="kicker">PERIOD COMPARISON</p><h2>Spending across snapshots</h2></div><span class="muted small">Periods have different lengths</span></div><div id="period-chart" class="period-chart"></div></article>
+</section>
+<section id="view-assets" class="view" hidden>
+<div class="section-head"><div><p class="kicker">BALANCE SHEET</p><h2>Assets & liabilities</h2></div><span id="asset-asof" class="muted"></span></div>
+<div class="metric-grid three"><article class="metric"><span>Gross assets</span><strong id="asset-gross">—</strong></article><article class="metric"><span>Total liabilities</span><strong id="asset-debt">—</strong></article><article class="metric"><span>Net worth</span><strong id="asset-net">—</strong></article></div>
+<div class="panel-grid"><article class="panel"><div class="panel-head"><div><p class="kicker">COMPOSITION</p><h2>Allocation</h2></div><div class="select-wrap compact"><label for="asset-group">Group by</label><select id="asset-group"><option value="category">Category</option><option value="account">Account</option><option value="currency">Currency</option></select></div></div><div id="asset-groups"></div></article><article class="panel"><div class="panel-head"><div><p class="kicker">MOVEMENT</p><h2>Change since prior snapshot</h2></div></div><div id="asset-movement"></div></article></div>
+<article class="panel"><div class="panel-head"><div><p class="kicker">POSITIONS</p><h2>Account & holding detail</h2></div><span id="holding-count" class="muted small"></span></div><div class="filter-row"><input id="asset-search" type="search" placeholder="Search account or holding" aria-label="Search account or holding"><select id="asset-category" aria-label="Filter asset category"><option value="">All categories</option></select><select id="asset-type" aria-label="Filter position type"><option value="">Assets and liabilities</option><option value="Asset">Assets only</option><option value="Liabilities">Liabilities only</option></select><button id="clear-assets" class="button light">Clear filters</button></div><div class="table-wrap"><table><thead><tr><th>Type</th><th>Category</th><th>Account</th><th>Holding</th><th>CCY</th><th class="numeric">Original</th><th class="numeric">HKD value</th><th class="numeric">Change</th></tr></thead><tbody id="asset-rows"></tbody></table></div></article>
+</section>
+<section id="view-spending" class="view" hidden>
+<div class="section-head"><div><p class="kicker">CASH FLOW</p><h2>Spending detail</h2></div><div class="select-wrap compact"><label for="spend-window">Itemized entries for</label><select id="spend-window"></select></div></div>
+<div class="metric-grid three"><article class="metric accent"><span>Reconciled expense</span><strong id="spend-total">—</strong><small id="spend-span"></small></article><article class="metric"><span>Housing</span><strong id="spend-housing">—</strong><small>Statement aggregate</small></article><article class="metric"><span>Routine / unitemized</span><strong id="spend-routine">—</strong><small>Reconciliation residual</small></article></div>
+<div class="panel-grid"><article class="panel"><div class="panel-head"><div><p class="kicker">EXPENSE COMPONENTS</p><h2>Reconciled breakdown</h2></div></div><div id="spend-components"></div></article><article class="panel"><div class="panel-head"><div><p class="kicker">LARGE EXPENSE LOG</p><h2>Suggested groups</h2></div><div class="select-wrap compact"><label for="event-group">Group by</label><select id="event-group"><option value="category">Suggested category</option><option value="month">Calendar month</option></select></div></div><div id="event-groups"></div></article></div>
+<article class="panel"><div class="panel-head"><div><p class="kicker">ITEMIZED ENTRIES</p><h2>Large expenses</h2></div><span id="event-count" class="muted small"></span></div><div class="filter-row"><input id="event-search" type="search" placeholder="Search description" aria-label="Search expense description"><select id="event-category" aria-label="Filter suggested category"><option value="">All suggested categories</option></select><button id="clear-events" class="button light">Clear filters</button></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Description</th><th>Suggested category</th><th class="numeric">Amount</th></tr></thead><tbody id="event-rows"></tbody></table></div></article>
+<p class="data-note">Only “Large exp.” has individual entries. Housing and routine expenses are Statement aggregates, not transaction-level records. Suggested groups are inferred from descriptions.</p>
+</section>
+<section id="view-budget" class="view" hidden>
+<div class="section-head"><div><p class="kicker">PLANNING</p><h2>Budget planner</h2></div><div class="select-wrap compact"><label for="budget-month">Budget month</label><select id="budget-month"></select></div></div>
+<div class="metric-grid three"><article class="metric"><span>Planned income</span><strong id="budget-income">—</strong></article><article class="metric"><span>Planned expenses</span><strong id="budget-expenses">—</strong></article><article class="metric"><span>Planned surplus</span><strong id="budget-surplus">—</strong></article></div>
+<div class="panel-grid"><article class="panel"><div class="panel-head"><div><p class="kicker">MONTHLY PLAN</p><h2>Expense categories</h2></div></div><div id="budget-categories"></div></article><article class="panel"><div class="panel-head"><div><p class="kicker">ACTUAL VS PLAN</p><h2>Reconciliation status</h2></div></div><div id="budget-actual"></div></article></div>
+<article class="panel"><div class="panel-head"><div><p class="kicker">UPCOMING MONTHS</p><h2>Budget schedule</h2></div></div><div class="table-wrap"><table><thead><tr><th>Month</th><th class="numeric">Income</th><th class="numeric">Housing</th><th class="numeric">Routine</th><th class="numeric">Events</th><th class="numeric">Expenses</th><th class="numeric">Surplus</th></tr></thead><tbody id="budget-rows"></tbody></table></div></article>
+</section>
+</div>
+</main>
+</div>
 </body>
 </html>
