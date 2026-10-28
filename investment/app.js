@@ -115,10 +115,11 @@ function render() {
   $("total-value").textContent=selected?money(selected.totalHKD):money(data.metrics.totalHKD);
   $("equity-value").textContent=selected?money(selected.equityHKD):money(data.metrics.equityHKD);
   $("unrealized-value").textContent=selected?money(selected.unrealizedHKD):money(data.metrics.unrealizedHKD);
-  $("unrealized-label").textContent=selected?"Open positions · cumulative at month end":"Open positions · cumulative P/L";
+  $("unrealized-label").textContent=selected?"Unrealized P/L · Month End":"Unrealized P/L · Today";
   $("realized-label").textContent=selected?"Realized stock P/L · this month":"Realized stock P/L · 2026 YTD";
   $("realized-value").textContent=selected?money(selected.realizedUSD*fx):money(data.metrics.realizedHKD);
   $("period-pnl").textContent=selected?money(selected.totalPL):money(data.metrics.realizedHKD+data.metrics.unrealizedHKD+data.metrics.dividendsHKD+data.metrics.interestHKD+data.metrics.taxHKD);
+  $("period-pnl").className=signClass(selected?selected.totalPL:data.metrics.realizedHKD+data.metrics.unrealizedHKD+data.metrics.dividendsHKD+data.metrics.interestHKD+data.metrics.taxHKD);
   $("period-pnl-label").textContent=selected?"Total P/L · this month":"2026 results + current open P/L";
   $("unrealized-value").className=signClass(selected?selected.unrealizedHKD:data.metrics.unrealizedHKD);
   $("realized-value").className=signClass(selected?selected.realizedUSD*fx:data.metrics.realizedHKD);
@@ -142,14 +143,14 @@ function renderPnL() {
   const period=$("overview-period").value;
   let items,note,total,balance="";
   if(period==="current") {
-    items=[["Realized stock P/L · 2026 YTD",m.realizedHKD],["Cumulative open-position P/L · today",m.unrealizedHKD],["Dividends · 2026 YTD",m.dividendsHKD],["Interest · 2026 YTD",m.interestHKD],["Withholding tax · 2026 YTD",m.taxHKD]];
+    items=[["Realized stock P/L · 2026 YTD",m.realizedHKD],["Unrealized P/L · Today",m.unrealizedHKD],["Dividends · 2026 YTD",m.dividendsHKD],["Interest · 2026 YTD",m.interestHKD],["Withholding tax · 2026 YTD",m.taxHKD]];
     total=items.reduce((sum,[,value])=>sum+(Number.isFinite(value)?value:0),0);
     note="This combines 2026 recorded results with cumulative P/L on shares still held today. It is a mixed-period sum, not this month's P/L or a lifetime return.";
   } else {
     const result=PortfolioModel.monthlyBreakdown(data.history,data.months,period);
     items=[["Change in unrealized stock P/L",result.changeUnrealized],["Realized stock P/L",result.realized],["Dividends",result.dividends],["Interest",result.interest],["Withholding tax",result.tax],["FX, fees & valuation difference",result.other]];
     total=result.total;
-    balance=`<div class="pnl-balance"><span>Cumulative open-position P/L at month end<br><small>Since purchase of shares still held</small></span><strong class="${signClass(result.endUnrealized)}">${money(result.endUnrealized)}</strong></div><p class="pnl-scope">THIS MONTH'S CHANGE</p>`;
+    balance=`<div class="pnl-balance"><span>Unrealized P/L · Month End<br><small>Gain or loss on shares still held</small></span><strong class="${signClass(result.endUnrealized)}">${money(result.endUnrealized)}</strong></div><p class="pnl-scope">THIS MONTH'S CHANGE</p>`;
     note=Number.isFinite(total)?"Monthly P/L uses the change in unrealized P/L since the prior month, plus realized results, income and FX/valuation difference. The cumulative balance above is context, not a separate monthly gain.":"January monthly P/L needs a December opening account value and unrealized balance.";
   }
   $("pnl-breakdown").innerHTML=balance+items.map(([label,val])=>`<div class="pnl-row"><span>${esc(label)}</span><strong class="${signClass(val)}">${money(val)}</strong></div>`).join("")+`<div class="pnl-row pnl-total"><span>${period==="current"?"Sum of shown components · mixed periods":"Total P/L this month · after funding"}</span><strong class="${signClass(total)}">${money(total)}</strong></div>`;

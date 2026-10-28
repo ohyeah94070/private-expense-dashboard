@@ -10,7 +10,7 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="./model.js?v=3" defer></script>
   <script src="./snapshot.js?v=2" defer></script>
-  <script src="./app.js?v=6" defer></script>
+  <script src="./app.js?v=7" defer></script>
 </head>
 <body>
 <div class="shell">
@@ -31,7 +31,7 @@
       <nav class="tabs" aria-label="Dashboard sections"><button class="tab active" data-tab="overview" type="button">Overview</button><button class="tab" data-tab="holdings" type="button">Holdings</button><button class="tab" data-tab="activity" type="button">Trades & cash</button><button class="tab" data-tab="watchlist" type="button">Watchlist</button></nav>
 
       <section id="view-overview" class="view">
-        <div class="metrics"><article class="metric featured"><span>Total account value</span><strong id="total-value">—</strong><small>HKD · equities + cash</small></article><article class="metric"><span>Equity value</span><strong id="equity-value">—</strong><small>HKD equivalent</small></article><article class="metric"><span id="unrealized-label">Open positions · cumulative P/L</span><strong id="unrealized-value">—</strong><small>Since purchase, on shares still held</small></article><article class="metric"><span id="realized-label">Realized stock P/L · 2026 YTD</span><strong id="realized-value">—</strong><small>Completed stock trades</small></article><article class="metric"><span id="period-pnl-label">2026 results + current open P/L</span><strong id="period-pnl">—</strong><small>HKD · see calculation note</small></article></div>
+        <div class="metrics"><article class="metric featured"><span>Total account value</span><strong id="total-value">—</strong><small>HKD · equities + cash</small></article><article class="metric"><span>Equity value</span><strong id="equity-value">—</strong><small>HKD equivalent</small></article><article class="metric"><span id="unrealized-label">Unrealized P/L · Today</span><strong id="unrealized-value">—</strong><small>Gain or loss on shares still held</small></article><article class="metric"><span id="realized-label">Realized stock P/L · 2026 YTD</span><strong id="realized-value">—</strong><small>Completed stock trades</small></article><article class="metric"><span id="period-pnl-label">2026 results + current open P/L</span><strong id="period-pnl">—</strong><small>HKD · see calculation note</small></article></div>
         <div class="panel-grid"><article class="panel"><div class="panel-head"><div><p class="eyebrow">PORTFOLIO</p><h2>Where the value sits</h2></div><button class="text-link" data-go="holdings" type="button">View holdings →</button></div><div id="allocation" class="allocation"></div></article><article class="panel"><div class="panel-head"><div><p class="eyebrow">PROFIT & LOSS</p><h2>What drives the result</h2></div></div><div id="pnl-breakdown" class="pnl-breakdown"></div><p id="pnl-note" class="panel-note"></p></article></div>
         <article class="panel"><div class="panel-head"><div><p class="eyebrow">2026</p><h2>Monthly profit & loss</h2></div></div><div id="monthly-bars" class="monthly-bars"></div><p class="panel-note">HKD profit or loss after recorded deposits and withdrawals. Select a month for the breakdown; January needs a December opening value.</p></article>
         <div class="source-note"><strong>Reading the numbers</strong><span id="overview-note">—</span></div>
