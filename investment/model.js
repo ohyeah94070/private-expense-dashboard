@@ -20,6 +20,27 @@
     const known=changeUnrealized+realized+dividends+interest+tax;
     return {total:row.totalPL,endUnrealized:row.unrealizedHKD,changeUnrealized,realized,dividends,interest,tax,other:Number.isFinite(row.totalPL)&&Number.isFinite(known)?row.totalPL-known:NaN};
   }
+  function stockBreakdown(data, period) {
+    const current=period==="current";
+    const index=data.history.findIndex(x=>x.month===period);
+    const month=data.history[index], prior=data.history[index-1];
+    const fx=current?data.fx:month?.fx;
+    const symbols=new Set();
+    const holdings=current?data.positions:data.valuations.filter(x=>x.month===period||x.month===prior?.month);
+    for(const row of holdings) if(row.symbol&&(current?row.shares>0:row.shares>0||row.unrealized!==0)) symbols.add(row.symbol);
+    for(const trade of data.trades) if(trade.asset==="STK"&&(current||trade.date.slice(0,7)===period)) symbols.add(trade.symbol);
+    for(const cash of data.cash) if(["DIVIDEND","TAX"].includes(cash.type)&&(current||cash.date.slice(0,7)===period)&&cash.symbol) symbols.add(cash.symbol);
+    return [...symbols].sort().map(symbol=>{
+      const open=current?data.positions.filter(x=>x.symbol===symbol).reduce((s,x)=>s+x.unrealized,0)*fx:(()=>{
+        const atEnd=data.valuations.filter(x=>x.month===period&&x.symbol===symbol).reduce((s,x)=>s+x.unrealized,0)*fx;
+        const before=prior?data.valuations.filter(x=>x.month===prior.month&&x.symbol===symbol).reduce((s,x)=>s+x.unrealized,0)*prior.fx:NaN;
+        return atEnd-before;
+      })();
+      const realized=data.trades.filter(x=>x.asset==="STK"&&x.symbol===symbol&&(current||x.date.slice(0,7)===period)).reduce((s,x)=>s+x.realized*(x.currency==="USD"?fx:1),0);
+      const income=data.cash.filter(x=>x.symbol===symbol&&["DIVIDEND","TAX"].includes(x.type)&&(current||x.date.slice(0,7)===period)).reduce((s,x)=>s+x.amount*(x.currency==="USD"?fx:1),0);
+      return {symbol,open,realized,income,total:open+realized+income};
+    });
+  }
   function parse(portfolio) {
     const p = portfolio.valueRanges || [];
     const positions = rows(p[0]).slice(1).filter(r => text(r[2])).map(r => ({
@@ -63,5 +84,5 @@
     };
   }
 
-  return { parse, monthlyBreakdown };
+  return { parse, monthlyBreakdown, stockBreakdown };
 });

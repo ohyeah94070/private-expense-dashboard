@@ -15,6 +15,8 @@ The P/L panel distinguishes the **month-end unrealized stock P/L balance** from 
 
 Labels use **this month** for monthly flows and changes, **2026 YTD** for the available calendar-year records, and **cumulative open-position P/L** for gains on shares still held since their purchase. The available records do not support a true account-lifetime P/L label.
 
+The Overview stock P/L table attributes each completed month's stock result to symbols: change in open-position unrealized P/L, realized trades, and dividends net of related tax. The current view keeps open-position P/L separate from 2026 realized and income values. Stock totals need not equal total account P/L because interest and FX/valuation differences are account-level items. January has no December opening unrealized balance, so its stock P/L change is unavailable.
+
 ## Encrypted GitHub snapshot
 
 `investment/snapshot.enc.json` is an encrypted point-in-time copy of the private Sheet. The website opens it with a recovery key when Google access is unavailable. The ciphertext is public, but the key is not stored in the repository. Google sign-in does not itself refresh this GitHub file; an authorized update must republish it.
