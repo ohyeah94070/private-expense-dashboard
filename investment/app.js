@@ -1,4 +1,5 @@
 const BROKERAGE_SHEET = "17026aWw5dDT3-bh9i_W8VMkIzW8K0EQYiWeIUtICYA0";
+const GOOGLE_CLIENT_ID = "110894641783-ranndo8u0vmmbq0c59g2vehma2vla4g6.apps.googleusercontent.com";
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const PORTFOLIO_RANGES = [
   "'Positions'!A4:I1000", "'Trades'!A4:L1000", "'Cash Ledger'!A4:I1000",
@@ -14,7 +15,6 @@ const percent = x => Number.isFinite(x) ? new Intl.NumberFormat("en-HK",{style:"
 const signClass = x => Number.isFinite(x) ? (x < 0 ? "negative" : x > 0 ? "positive" : "") : "";
 let tokenClient, token, data, activeTab="overview", epoch=0;
 
-$("client-id").value = localStorage.getItem("investment-google-client-id") || localStorage.getItem("expense-google-client-id") || "";
 $("connect").addEventListener("click", connect);
 $("refresh").addEventListener("click", () => token ? load() : connect());
 $("disconnect").addEventListener("click", disconnect);
@@ -25,11 +25,9 @@ for(const id of ["cash-type","cash-search"]) $(id).addEventListener(id.endsWith(
 
 function setError(message) { $("connect-error").textContent = message; }
 function connect() {
-  const clientId = $("client-id").value.trim();
+  const clientId = GOOGLE_CLIENT_ID;
   setError("");
-  if (!clientId.endsWith(".apps.googleusercontent.com")) return setError("Enter the Google OAuth client ID used by Finance Review.");
   if (!window.google?.accounts?.oauth2) return setError("Google sign-in is still loading. Try again in a moment.");
-  localStorage.setItem("investment-google-client-id", clientId);
   tokenClient = google.accounts.oauth2.initTokenClient({client_id:clientId,scope:SCOPE,callback:async result => {
     if (result.error || !result.access_token) return setError("Google sign-in did not complete. Check the selected account and OAuth settings.");
     token = result.access_token;

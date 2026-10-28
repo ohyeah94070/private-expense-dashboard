@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="./style.css?v=1">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="./model.js?v=1" defer></script>
-  <script src="./app.js?v=1" defer></script>
+  <script src="./app.js?v=2" defer></script>
   <script type="module" src="https://widgets.tradingview-widget.com/w/en/tv-market-data.js"></script>
 </head>
 <body>
@@ -22,7 +22,7 @@
   <main>
     <section id="setup" class="connect-card">
       <div><p class="eyebrow">PRIVATE GOOGLE SHEETS CONNECTION</p><h1>Your portfolio, in one place.</h1><p>Connect the Google account that owns your Brokerage Portfolio Tracker. The site reads that sheet directly in your browser; market quotes come from TradingView.</p><div class="privacy-line"><span class="privacy-dot"></span> Financial rows and access tokens are never stored in the website code.</div></div>
-      <div class="connect-form"><label for="client-id">Google OAuth client ID</label><input id="client-id" autocomplete="off" spellcheck="false" placeholder="…apps.googleusercontent.com"><p class="field-hint">If you connected Finance Review on this browser, this is filled in automatically.</p><button id="connect" class="button primary" type="button">Connect Google account <span aria-hidden="true">→</span></button><p id="connect-error" class="error" role="alert"></p></div>
+      <div class="connect-form"><p class="eyebrow">SECURE SIGN-IN</p><h2>Connect Google Sheets</h2><p class="field-hint">Use the Google account that owns your Brokerage Portfolio Tracker.</p><button id="connect" class="button primary" type="button">Connect Google account <span aria-hidden="true">→</span></button><p id="connect-error" class="error" role="alert"></p></div>
     </section>
 
     <div id="app" hidden>
