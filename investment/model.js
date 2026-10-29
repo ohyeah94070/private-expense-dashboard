@@ -20,6 +20,13 @@
     const known=changeUnrealized+realized+dividends+interest+tax;
     return {total:row.totalPL,endUnrealized:row.unrealizedHKD,changeUnrealized,realized,dividends,interest,tax,other:Number.isFinite(row.totalPL)&&Number.isFinite(known)?row.totalPL-known:NaN};
   }
+  function accountYTD(data) {
+    const opening=data.history.find(x=>x.month==="2026-01")?.openingNAV;
+    const closing=data.metrics.totalHKD;
+    const through=data.asOf.slice(0,7);
+    const funding=data.months.filter(x=>x.month.startsWith("2026-")&&x.month<=through).reduce((sum,x)=>sum+x.deposits+x.withdrawals,0);
+    return {opening,closing,funding,total:Number.isFinite(opening)&&Number.isFinite(closing)?closing-opening-funding:NaN};
+  }
   function stockBreakdown(data, period) {
     const current=period==="current";
     const index=data.history.findIndex(x=>x.month===period);
@@ -90,7 +97,7 @@
     const history=rows(p[13]).slice(1).filter(r=>/^\d{4}-\d{2}$/.test(text(r[0]))).map(r=>({
       month:text(r[0]),equityUSD:n(r[1]),cashUSD:n(r[2]),cashHKD:n(r[3]),fx:n(r[4]),
       equityHKD:n(r[5]),cashTotalHKD:n(r[6]),totalHKD:n(r[12])||n(r[7]),unrealizedHKD:n(r[8]),
-      realizedUSD:n(r[9]),totalPL:n(r[10]),netFundingHKD:n(r[11])
+      realizedUSD:n(r[9]),totalPL:n(r[10]),netFundingHKD:n(r[11]),openingNAV:n(r[13])
     }));
     const valuations=rows(p[14]).slice(1).filter(r=>/^\d{4}-\d{2}$/.test(text(r[0]))).map(r=>({
       month:text(r[0]),symbol:text(r[1]),shares:n(r[2]),close:n(r[3]),marketValue:n(r[4]),
@@ -109,5 +116,5 @@
     };
   }
 
-  return { parse, monthlyBreakdown, stockBreakdown, holdingsForPeriod, cashUSDForPeriod, parseMarket };
+  return { parse, monthlyBreakdown, accountYTD, stockBreakdown, holdingsForPeriod, cashUSDForPeriod, parseMarket };
 });

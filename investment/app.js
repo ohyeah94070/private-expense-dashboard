@@ -6,7 +6,7 @@ const PORTFOLIO_RANGES = [
   "'Monthly Activity'!A4:H100", "'Dashboard'!A6", "'Dashboard'!C6",
   "'Dashboard'!E6", "'Dashboard'!A10", "'Dashboard'!C10", "'Dashboard'!E10",
   "'Dashboard'!G10", "'Dashboard'!I10", "'README'!B18",
-  "'Monthly Summary'!A1:M100", "'Monthly Valuation'!A1:I100"
+  "'Monthly Summary'!A1:N100", "'Monthly Valuation'!A1:I100"
 ];
 const MARKET_RANGE = ["'Market Watch'!A1:H9"];
 const MARKET_ITEMS = [
@@ -135,20 +135,21 @@ function render() {
   selector.innerHTML='<option value="current">Current position + 2026 activity</option>'+data.history.map(x=>`<option value="${esc(x.month)}">${esc(x.month)}</option>`).join("");
   selector.value=[...selector.options].some(x=>x.value===prior)?prior:"current";
   const selected=data.history.find(x=>x.month===selector.value),fx=selected?.fx??data.fx;
+  const ytd=PortfolioModel.accountYTD(data);
   $("hero-subtitle").textContent=selected?`${selected.month} month end · official IBKR account value; shares and cash reconstructed`:`IBKR positions ${data.asOf || "—"} · Cash activity through ${data.cashThrough || "—"} · Webull data pending`;
   $("total-value").textContent=selected?money(selected.totalHKD):money(data.metrics.totalHKD);
   $("equity-value").textContent=selected?money(selected.equityHKD):money(data.metrics.equityHKD);
   $("cash-value").textContent=selected?money(selected.cashTotalHKD):money(data.metrics.cashHKD);
   $("unrealized-value").textContent=selected?money(selected.unrealizedHKD):money(data.metrics.unrealizedHKD);
-  $("unrealized-label").textContent=selected?"Unrealized P/L · Month End":"Unrealized P/L · Today";
+  $("unrealized-label").textContent=selected?"Open stock P/L · Month end":"Open stock P/L · Cumulative";
   $("realized-label").textContent=selected?"Realized stock P/L · this month":"Realized stock P/L · 2026 YTD";
   $("realized-value").textContent=selected?money(selected.realizedUSD*fx):money(data.metrics.realizedHKD);
-  $("period-pnl").textContent=selected?money(selected.totalPL):money(data.metrics.realizedHKD+data.metrics.unrealizedHKD+data.metrics.dividendsHKD+data.metrics.interestHKD+data.metrics.taxHKD);
-  $("period-pnl").className=signClass(selected?selected.totalPL:data.metrics.realizedHKD+data.metrics.unrealizedHKD+data.metrics.dividendsHKD+data.metrics.interestHKD+data.metrics.taxHKD);
-  $("period-pnl-label").textContent=selected?"Total P/L · this month":"2026 results + current open P/L";
+  $("period-pnl").textContent=selected?money(selected.totalPL):money(ytd.total);
+  $("period-pnl").className=signClass(selected?selected.totalPL:ytd.total);
+  $("period-pnl-label").textContent=selected?"Total P/L · this month":"Total P/L · 2026 YTD";
   $("unrealized-value").className=signClass(selected?selected.unrealizedHKD:data.metrics.unrealizedHKD);
   $("realized-value").className=signClass(selected?selected.realizedUSD*fx:data.metrics.realizedHKD);
-  $("overview-note").textContent=selected?"Total Account Value is IBKR's official month-end NAV. Equity, cash and unrealized P/L are reconstructed using IBKR historical closes and ECB FX, so their sum may differ slightly from NAV. Monthly P/L subtracts recorded funding; January needs a December opening value.":`Account value, equity and cash are the 28 Oct IBKR account snapshot. Position prices may have a slightly different quote time. Historical P/L components use ${number(data.fx,4)} HKD per USD; this is not a YTD return.`;
+  $("overview-note").textContent=selected?"Account value and monthly P/L use IBKR's official month-end NAV. January starts from the official 31 Dec 2025 NAV. Equity, cash and open stock P/L are reconstructed; July and August FX and QLD cost basis are anchored to IBKR statements. Other months remain estimates.":`Account value, equity and cash come from the ${data.asOf||"latest"} IBKR account snapshot. 2026 YTD P/L = current account value − official 31 Dec 2025 NAV − recorded 2026 net funding. Open stock P/L is cumulative since purchase, including shares owned before 2026.`;
   renderAllocation(); renderPnL(); renderStockPnL(); renderMonthlyBars(); renderHoldings(); renderMonthly(); renderTrades(); renderCash(); renderMarket();
   if(["overview","holdings","activity","watchlist"].includes(location.hash.slice(1))) showTab(location.hash.slice(1));
   else showTab(activeTab);
@@ -166,26 +167,35 @@ function renderAllocation() {
 function renderPnL() {
   const m=data.metrics;
   const period=$("overview-period").value;
-  let items,note,total,balance="";
+  let items,note,total,balance="",context="";
   if(period==="current") {
-    items=[["Realized stock P/L · 2026 YTD",m.realizedHKD],["Unrealized P/L · Today",m.unrealizedHKD],["Dividends · 2026 YTD",m.dividendsHKD],["Interest · 2026 YTD",m.interestHKD],["Withholding tax · 2026 YTD",m.taxHKD]];
-    total=items.reduce((sum,[,value])=>sum+(Number.isFinite(value)?value:0),0);
-    note="This combines 2026 recorded results with cumulative P/L on shares still held today. It is a mixed-period sum, not this month's P/L or a lifetime return.";
+    const ytd=PortfolioModel.accountYTD(data);
+    items=[["Latest account value",ytd.closing],["Opening NAV · 31 Dec 2025",-ytd.opening],["Net funding · 2026",-ytd.funding]];
+    total=ytd.total;
+    const components=[["Realized stock P/L · 2026",m.realizedHKD],["Open stock P/L · cumulative",m.unrealizedHKD],["Dividends · 2026",m.dividendsHKD],["Interest · 2026",m.interestHKD],["Withholding tax · 2026",m.taxHKD]];
+    context=`<p class="pnl-scope">DETAIL · DIFFERENT TIME PERIODS, NOT ADDED ABOVE</p>`+components.map(([label,val])=>`<div class="pnl-row"><span>${esc(label)}</span><strong class="${signClass(val)}">${money(val)}</strong></div>`).join("");
+    note="2026 YTD account P/L uses IBKR account value after recorded deposits and withdrawals. Open stock P/L includes gains on shares purchased before 2026, so it is shown separately.";
+  } else if(period==="2026-01") {
+    const row=data.history.find(x=>x.month===period);
+    items=[["Month-end account value",row.totalHKD],["Opening NAV · 31 Dec 2025",-row.openingNAV],["Net funding · January",-row.netFundingHKD]];
+    total=row.totalPL;
+    balance=`<div class="pnl-balance"><span>Open stock P/L · cumulative at month end</span><strong class="${signClass(row.unrealizedHKD)}">${money(row.unrealizedHKD)}</strong></div>`;
+    note="January account P/L uses IBKR's official 31 Dec 2025 opening NAV. A December stock-level unrealized balance is not available for a reliable January stock breakdown.";
   } else {
     const result=PortfolioModel.monthlyBreakdown(data.history,data.months,period);
     items=[["Change in unrealized stock P/L",result.changeUnrealized],["Realized stock P/L",result.realized],["Dividends",result.dividends],["Interest",result.interest],["Withholding tax",result.tax],["FX, fees & valuation difference",result.other]];
     total=result.total;
-    balance=`<div class="pnl-balance"><span>Unrealized P/L · Month End<br><small>Gain or loss on shares still held</small></span><strong class="${signClass(result.endUnrealized)}">${money(result.endUnrealized)}</strong></div><p class="pnl-scope">THIS MONTH'S CHANGE</p>`;
-    note=Number.isFinite(total)?"Monthly P/L uses the change in unrealized P/L since the prior month, plus realized results, income and FX/valuation difference. The cumulative balance above is context, not a separate monthly gain.":"January monthly P/L needs a December opening account value and unrealized balance.";
+    balance=`<div class="pnl-balance"><span>Open stock P/L · cumulative at month end<br><small>Gain or loss on shares still held</small></span><strong class="${signClass(result.endUnrealized)}">${money(result.endUnrealized)}</strong></div><p class="pnl-scope">THIS MONTH'S CHANGE</p>`;
+    note="Monthly P/L uses the change in unrealized P/L since the prior month, plus realized results, income and FX/valuation difference. The cumulative balance above is context, not a separate monthly gain.";
   }
-  $("pnl-breakdown").innerHTML=balance+items.map(([label,val])=>`<div class="pnl-row"><span>${esc(label)}</span><strong class="${signClass(val)}">${money(val)}</strong></div>`).join("")+`<div class="pnl-row pnl-total"><span>${period==="current"?"Sum of shown components · mixed periods":"Total P/L this month · after funding"}</span><strong class="${signClass(total)}">${money(total)}</strong></div>`;
+  $("pnl-breakdown").innerHTML=balance+items.map(([label,val])=>`<div class="pnl-row"><span>${esc(label)}</span><strong class="${signClass(val)}">${money(val)}</strong></div>`).join("")+`<div class="pnl-row pnl-total"><span>${period==="current"?"Total P/L · 2026 YTD":"Total P/L this month · after funding"}</span><strong class="${signClass(total)}">${money(total)}</strong></div>`+context;
   $("pnl-note").textContent=note;
 }
 function renderStockPnL() {
   const period=$("overview-period").value, current=period==="current";
   const rows=PortfolioModel.stockBreakdown(data,period).sort((a,b)=>Math.abs(current?b.open:b.total)-Math.abs(current?a.open:a.total));
   $("stock-pl-title").textContent=current?"Stock P/L by symbol · current & 2026":"Stock P/L by symbol · "+period;
-  $("stock-pl-head").innerHTML=current?"<tr><th>Symbol</th><th class='numeric'>Open P/L today</th><th class='numeric'>Realized 2026 YTD</th><th class='numeric'>Dividends & tax 2026 YTD</th></tr>":"<tr><th>Symbol</th><th class='numeric'>Unrealized change</th><th class='numeric'>Realized</th><th class='numeric'>Dividends & tax</th><th class='numeric'>Stock P/L this month</th></tr>";
+  $("stock-pl-head").innerHTML=current?"<tr><th>Symbol</th><th class='numeric'>Open P/L cumulative</th><th class='numeric'>Realized 2026 YTD</th><th class='numeric'>Dividends & tax 2026 YTD</th></tr>":"<tr><th>Symbol</th><th class='numeric'>Unrealized change</th><th class='numeric'>Realized</th><th class='numeric'>Dividends & tax</th><th class='numeric'>Stock P/L this month</th></tr>";
   $("stock-pl-rows").innerHTML=rows.map(x=>`<tr><td><strong>${esc(x.symbol)}</strong></td><td class="numeric ${signClass(x.open)}">${money(x.open)}</td><td class="numeric ${signClass(x.realized)}">${money(x.realized)}</td><td class="numeric ${signClass(x.income)}">${money(x.income)}</td>${current?"":`<td class="numeric ${signClass(x.total)}"><strong>${money(x.total)}</strong></td>`}</tr>`).join("")||`<tr><td colspan="${current?4:5}" class="empty">No stock P/L records.</td></tr>`;
   $("stock-pl-note").textContent=current?"Open P/L is cumulative on shares still held. Realized P/L and dividends/tax cover 2026; these columns have different time scopes and are not added together.":period==="2026-01"?"January stock P/L needs a December opening unrealized balance. Realized results and dividends/tax are still shown.":"This month's stock P/L = change in unrealized P/L + realized trades + dividends and related tax. Account total P/L also includes interest and FX/valuation differences.";
 }
