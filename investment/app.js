@@ -36,25 +36,6 @@ $("monthly-bars").addEventListener("click", event => {
   const card=event.target.closest("[data-month]");
   if(card) { $("overview-period").value=card.dataset.month; render(); }
 });
-$("open-snapshot").addEventListener("click", async()=>{
-  $("snapshot-error").textContent="";
-  try {
-    const recoveryKey=$("snapshot-open-key").value.trim();
-    if(!/^[A-Za-z]{12}$/.test(recoveryKey)) throw new Error("Enter the 12-letter recovery key (case-sensitive).");
-    const result=await Snapshot.unlock(recoveryKey);
-    data=PortfolioModel.parse(result.raw);
-    if(!data.positions.length) throw new Error("Saved snapshot has no positions.");
-    $("snapshot-open-key").value="";
-    $("setup").hidden=true; $("app").hidden=false; $("disconnect").hidden=false;
-    $("refresh").hidden=false; $("refresh").textContent="Connect Google";
-    $("snapshot-banner").hidden=false;
-    $("snapshot-date").textContent="Saved "+new Intl.DateTimeFormat("en-GB",{dateStyle:"medium",timeStyle:"short",timeZone:"Asia/Hong_Kong"}).format(new Date(result.createdAt))+" HKT · data may be out of date";
-    $("sync-status").textContent="Saved snapshot";
-    marketRows=[]; marketStatus="Market quotes require Google sign-in; saved snapshots contain portfolio data only.";
-    render();
-  } catch(e) { $("snapshot-error").textContent=e.name==="OperationError"?"Incorrect recovery key.":e.message; }
-});
-
 function setError(message) { $("connect-error").textContent = message; }
 function connect() {
   const clientId = GOOGLE_CLIENT_ID;
@@ -94,7 +75,6 @@ async function load() {
     data=next;
     marketRows=[]; marketStatus="Loading market quotes…";
     $("setup").hidden=true; $("app").hidden=false;
-    $("snapshot-banner").hidden=true;
     $("refresh").hidden=false; $("disconnect").hidden=false;
     $("refresh").textContent="Refresh";
     $("sync-status").textContent="Refreshed "+new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Hong_Kong",hour:"2-digit",minute:"2-digit"}).format(new Date())+" HKT";
@@ -170,7 +150,7 @@ function renderWebullCurrent() {
   $("webull-current-cash").textContent=money(w.cash);
   $("webull-current-open").textContent=money(w.unrealized);
   $("webull-current-open").className=signClass(w.unrealized);
-  $("webull-current-note").textContent=`Snapshot ${w.asOf||"unavailable"}. This is newer than the latest reconciled statement and is shown separately. Cumulative unrealized P/L is the current open-position balance, not this month's profit.`;
+  $("webull-current-note").textContent=`Updated ${w.asOf||"unavailable"}. This is newer than the latest reconciled statement and is shown separately. Cumulative unrealized P/L is the current open-position balance, not this month's profit.`;
 }
 function renderWebullHoldings() {
   const period=$("overview-period").value,current=period==="current";
