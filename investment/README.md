@@ -4,7 +4,9 @@ Read-only GitHub Pages investment dashboard. The browser signs in to the private
 
 ## Data sources
 
-- Current portfolio, trades, cash activity: IBKR records imported into the private Sheet. Webull is pending.
+- Current IBKR portfolio, trades, and cash activity: IBKR records in the private Sheet. Current Webull value, cash, positions, and cumulative unrealized P/L: read-only Webull OpenAPI snapshot in `Webull Current`.
+- Webull official month-end NAV, statement cash categories, and historical holdings: unlocked monthly statements in the private `微牛 Webull/原始结单` Google Drive folder, summarized in `Webull Monthly` and `Webull Holdings`.
+- `Broker Reconciliation` keeps IBKR and Webull month-end NAV, funding, and P/L in separate columns, with a combined check. The latest common reconciled month is September 2026. October API values are displayed separately because they are not an official month-end result.
 - Historical month-end account value: IBKR PortfolioAnalyst daily NAV, sampled on the last trading day of each month and stored in `Monthly Summary!M2:M10`.
 - Historical QLD, QQQ and SPYM closes: IBKR historical daily bars. The month-end share counts, cash and cost bases are still reconstructed from transactions in the Sheet; these are estimates until reconciled with IBKR statements.
 - Market Watch: eight quotes from the private `Market Watch` Sheet, using GOOGLEFINANCE for real S&P 500 and Nasdaq 100 indices plus six ETFs/stocks. The website reads this range separately through the existing read-only Google OAuth session, so a quote failure cannot block the brokerage dashboard. There is no TradingView widget, extra quote API, database or quote archive.

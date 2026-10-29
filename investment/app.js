@@ -6,7 +6,9 @@ const PORTFOLIO_RANGES = [
   "'Monthly Activity'!A4:H100", "'Dashboard'!A6", "'Dashboard'!C6",
   "'Dashboard'!E6", "'Dashboard'!A10", "'Dashboard'!C10", "'Dashboard'!E10",
   "'Dashboard'!G10", "'Dashboard'!I10", "'README'!B18",
-  "'Monthly Summary'!A1:N100", "'Monthly Valuation'!A1:I100"
+  "'Monthly Summary'!A1:N100", "'Monthly Valuation'!A1:I100",
+  "'Webull Monthly'!A1:R100", "'Webull Holdings'!A1:I200",
+  "'Webull Current'!A1:I50", "'Broker Reconciliation'!A1:L100"
 ];
 const MARKET_RANGE = ["'Market Watch'!A1:H9"];
 const MARKET_ITEMS = [
@@ -136,7 +138,7 @@ function render() {
   selector.value=[...selector.options].some(x=>x.value===prior)?prior:"current";
   const selected=data.history.find(x=>x.month===selector.value),fx=selected?.fx??data.fx;
   const ytd=PortfolioModel.accountYTD(data);
-  $("hero-subtitle").textContent=selected?`${selected.month} month end · official IBKR account value; shares and cash reconstructed`:`IBKR positions ${data.asOf || "—"} · Cash activity through ${data.cashThrough || "—"} · Webull data pending`;
+  $("hero-subtitle").textContent=selected?`${selected.month} month end · official IBKR account value; shares and cash reconstructed`:`IBKR positions ${data.asOf || "—"} · Webull API ${data.webullCurrent.asOf.slice(0,10)||"—"}`;
   $("total-value").textContent=selected?money(selected.totalHKD):money(data.metrics.totalHKD);
   $("equity-value").textContent=selected?money(selected.equityHKD):money(data.metrics.equityHKD);
   $("cash-value").textContent=selected?money(selected.cashTotalHKD):money(data.metrics.cashHKD);
@@ -150,9 +152,34 @@ function render() {
   $("unrealized-value").className=signClass(selected?selected.unrealizedHKD:data.metrics.unrealizedHKD);
   $("realized-value").className=signClass(selected?selected.realizedUSD*fx:data.metrics.realizedHKD);
   $("overview-note").textContent=selected?"Account value and monthly P/L use IBKR's official month-end NAV. January starts from the official 31 Dec 2025 NAV. Equity, cash and open stock P/L are reconstructed; July and August FX and QLD cost basis are anchored to IBKR statements. Other months remain estimates.":`Account value, equity and cash come from the ${data.asOf||"latest"} IBKR account snapshot. 2026 YTD P/L = current account value − official 31 Dec 2025 NAV − recorded 2026 net funding. Open stock P/L is cumulative since purchase, including shares owned before 2026.`;
-  renderAllocation(); renderPnL(); renderStockPnL(); renderMonthlyBars(); renderHoldings(); renderMonthly(); renderTrades(); renderCash(); renderMarket();
+  renderBrokerReconciliation(); renderWebullCurrent(); renderAllocation(); renderPnL(); renderStockPnL(); renderMonthlyBars(); renderHoldings(); renderWebullHoldings(); renderMonthly(); renderWebullCash(); renderTrades(); renderCash(); renderMarket();
   if(["overview","holdings","activity","watchlist"].includes(location.hash.slice(1))) showTab(location.hash.slice(1));
   else showTab(activeTab);
+}
+function renderBrokerReconciliation() {
+  const rows=data.reconciliation,latest=rows.at(-1);
+  $("combined-nav").textContent=money(latest?.combinedNAV);
+  $("combined-month").textContent=latest?`${latest.month} · latest month reconciled by both brokers`:"";
+  $("ibkr-month-nav").textContent=money(latest?.ibkrNAV);
+  $("webull-month-nav").textContent=money(latest?.webullNAV);
+  $("broker-reconciliation-rows").innerHTML=rows.map(x=>`<tr><td>${esc(x.month)}${x.note?" <span title=\""+esc(x.note)+"\">ⓘ</span>":""}</td><td class="numeric">${money(x.ibkrNAV)}</td><td class="numeric">${money(x.webullNAV)}</td><td class="numeric"><strong>${money(x.combinedNAV)}</strong></td><td class="numeric ${signClass(x.ibkrPL)}">${money(x.ibkrPL)}</td><td class="numeric ${signClass(x.webullPL)}">${money(x.webullPL)}</td><td class="numeric ${signClass(x.combinedPL)}"><strong>${money(x.combinedPL)}</strong></td><td class="numeric ${signClass(x.combinedFunding)}">${money(x.combinedFunding)}</td><td class="numeric ${signClass(x.check)}">${money(x.check)}</td></tr>`).join("")||'<tr><td colspan="9" class="empty">No broker reconciliation yet.</td></tr>';
+}
+function renderWebullCurrent() {
+  const w=data.webullCurrent;
+  $("webull-current-nav").textContent=money(w.nav);
+  $("webull-current-cash").textContent=money(w.cash);
+  $("webull-current-open").textContent=money(w.unrealized);
+  $("webull-current-open").className=signClass(w.unrealized);
+  $("webull-current-note").textContent=`Snapshot ${w.asOf||"unavailable"}. This is newer than the latest reconciled statement and is shown separately. Cumulative unrealized P/L is the current open-position balance, not this month's profit.`;
+}
+function renderWebullHoldings() {
+  const period=$("overview-period").value,current=period==="current";
+  const rows=current?data.webullCurrent.positions.map(x=>({period:"Current",symbol:x.symbol,type:x.type,shares:x.shares,price:x.price,marketValue:x.marketValue,unrealized:x.unrealized,currency:x.currency})):data.webullHoldings.filter(x=>x.month===period).map(x=>({...x,period:x.month,unrealized:NaN}));
+  $("webull-holding-rows").innerHTML=rows.map(x=>`<tr><td>${esc(x.period)}</td><td><strong>${esc(x.symbol)}</strong></td><td>${esc(x.type)}</td><td class="numeric">${number(x.shares,2)}</td><td class="numeric">${money(x.price,x.currency)}</td><td class="numeric">${money(x.marketValue,x.currency)}</td><td class="numeric ${signClass(x.unrealized)}">${money(x.unrealized,x.currency)}</td></tr>`).join("")||'<tr><td colspan="7" class="empty">No Webull holdings for this period.</td></tr>';
+  $("webull-holdings-note").textContent=current?`API positions as of ${data.webullCurrent.asOf}. Open P/L uses API cost basis.`:"Month-end quantities, prices and values come from Webull statements. Historical open P/L is unavailable because those statements do not provide cost basis; the monthly account P/L above uses official NAV.";
+}
+function renderWebullCash() {
+  $("webull-cash-rows").innerHTML=data.webullMonthly.map(x=>`<tr><td>${esc(x.month)}</td><td class="numeric">${money(x.deposits)}</td><td class="numeric ${signClass(x.withdrawals)}">${money(x.withdrawals)}</td><td class="numeric ${signClass(x.dividends)}">${money(x.dividends)}</td><td class="numeric ${signClass(x.fees)}">${money(x.fees)}</td><td class="numeric ${signClass(x.other)}">${money(x.other)}</td><td>${x.statement?`<a href="${esc(x.statement)}" target="_blank" rel="noopener noreferrer">Open ↗</a>`:"—"}</td></tr>`).join("");
 }
 function renderAllocation() {
   const period=$("overview-period").value;
@@ -235,7 +262,7 @@ function renderHoldings() {
   $("holdings-scope").textContent=current?"CURRENT POSITIONS":"MONTH-END POSITIONS";
   $("holding-asof").textContent=current?(data.asOf?`As of ${data.asOf}`:""):`${period} month end`;
   $("holding-price-head").textContent=current?"Last price":"Month-end close";
-  $("holdings-note").textContent=current?"Stock prices and unrealized P/L come from the latest IBKR snapshot. Cash is converted to USD using the displayed portfolio FX rate. Webull is pending.":"Historical shares and cost bases are reconstructed from IBKR trades; closing prices come from IBKR daily history. HKD cash is converted at month-end FX. Values are estimates until reconciled with monthly statements.";
+  $("holdings-note").textContent=current?"IBKR stock prices and unrealized P/L come from the latest IBKR snapshot. Cash is converted to USD using the displayed portfolio FX rate.":"Historical IBKR shares and cost bases are reconstructed from trades; closing prices come from IBKR daily history. Values are estimates until reconciled with monthly statements.";
   const stockRows=holdings.map(x=>`<tr><td>${esc(x.broker)}</td><td><strong>${esc(x.symbol)}</strong></td><td class="numeric">${number(x.shares)}</td><td class="numeric">${money(x.averageCost,"USD")}</td><td class="numeric">${money(x.lastPrice,"USD")}</td><td class="numeric">${money(x.marketValue,"USD")}</td><td class="numeric ${signClass(x.unrealized)}">${money(x.unrealized,"USD")}</td><td class="numeric">${total>0?percent(x.marketValue/total):"—"}</td></tr>`).join("");
   const cashRow=`<tr class="cash-holding"><td>IBKR</td><td><strong>Cash</strong><small>USD equivalent</small></td><td class="numeric">—</td><td class="numeric">—</td><td class="numeric">—</td><td class="numeric"><strong>${money(cashUSD,"USD")}</strong></td><td class="numeric">—</td><td class="numeric">—</td></tr>`;
   $("holding-rows").innerHTML=stockRows+cashRow;

@@ -103,8 +103,30 @@
       month:text(r[0]),symbol:text(r[1]),shares:n(r[2]),close:n(r[3]),marketValue:n(r[4]),
       costBasis:n(r[7]),unrealized:n(r[8])
     }));
+    const webullMonthly=rows(p[15]).slice(1).filter(r=>/^\d{4}-\d{2}$/.test(text(r[0]))).map(r=>({
+      month:text(r[0]),nav:n(r[1]),cash:n(r[2]),stocks:n(r[3]),funds:n(r[4]),
+      deposits:n(r[6]),withdrawals:n(r[7]),funding:n(r[8]),pl:n(r[9]),fx:n(r[10]),
+      dividends:n(r[11]),fees:n(r[12]),interest:n(r[13]),other:n(r[14]),statement:text(r[17])
+    }));
+    const webullHoldings=rows(p[16]).slice(1).filter(r=>/^\d{4}-\d{2}$/.test(text(r[0]))).map(r=>({
+      month:text(r[0]),type:text(r[1]),symbol:text(r[2]),name:text(r[3]),shares:n(r[4]),
+      price:n(r[5]),marketValue:n(r[6]),currency:text(r[7]),hkd:n(r[8])
+    }));
+    const currentRows=rows(p[17]);
+    const webullCurrent={asOf:text(currentRows[1]?.[1]),nav:n(currentRows[2]?.[1]),
+      market:n(currentRows[3]?.[1]),cash:n(currentRows[4]?.[1]),unrealized:n(currentRows[5]?.[1]),
+      source:text(currentRows[6]?.[1]),positions:currentRows.slice(9).filter(r=>text(r[0])).map(r=>({
+        symbol:text(r[0]),type:text(r[1]),shares:n(r[2]),currency:text(r[3]),
+        cost:n(r[4]),price:n(r[5]),marketValue:n(r[6]),unrealized:n(r[7])
+      }))};
+    const reconciliation=rows(p[18]).slice(1).filter(r=>/^\d{4}-\d{2}$/.test(text(r[0]))).map(r=>({
+      month:text(r[0]),ibkrNAV:n(r[1]),webullNAV:n(r[2]),combinedNAV:n(r[3]),
+      ibkrFunding:n(r[4]),webullFunding:n(r[5]),combinedFunding:n(r[6]),
+      ibkrPL:n(r[7]),webullPL:n(r[8]),combinedPL:n(r[9]),check:n(r[10]),note:text(r[11])
+    }));
     return {
       positions, trades, cash, months, history, valuations,
+      webullMonthly,webullHoldings,webullCurrent,reconciliation,
       fx: value(p[12]),
       metrics: {
         totalHKD: value(p[4]), equityHKD: value(p[5]), cashHKD: value(p[6]),
