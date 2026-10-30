@@ -11,12 +11,7 @@ const PORTFOLIO_RANGES = [
   "'Webull Current'!A1:I50", "'Broker Reconciliation'!A1:L100",
   "'Webull Executions'!A1:J1000"
 ];
-const MARKET_RANGE = ["'Market Watch'!A1:H9"];
-const MARKET_ITEMS = [
-  ["INDEXSP:.INX","S&P 500 Index"],["INDEXNASDAQ:NDX","Nasdaq 100 Index"],
-  ["NASDAQ:SOXX","SOXX"],["NASDAQ:SMH","SMH"],["NYSEARCA:SPY","SPY"],
-  ["NASDAQ:NVDA","NVDA"],["NASDAQ:GOOGL","GOOGL"],["NASDAQ:MU","MU"]
-];
+const MARKET_RANGE = ["'Market Watch'!A1:H50"];
 const $ = id => document.getElementById(id);
 const esc = x => String(x ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = (x, ccy="HKD") => Number.isFinite(x) ? `${x<0?"(":""}${ccy==="HKD"?"HK$":"$"}${new Intl.NumberFormat("en-HK",{minimumFractionDigits:2,maximumFractionDigits:2}).format(Math.abs(x))}${x<0?")":""}` : "—";
@@ -87,7 +82,7 @@ async function load() {
       if(current!==epoch) return;
       marketRows=PortfolioModel.parseMarket(result.valueRanges?.[0]?.values||[]);
       const available=marketRows.filter(row=>Number.isFinite(row.price)).length;
-      marketStatus=available?`${available} of ${MARKET_ITEMS.length} quotes available · Google Finance via your private Sheet · quotes may be delayed up to 20 minutes.`:"No current market quotes available; missing or stale values are hidden.";
+      marketStatus=available?`${available} of ${marketRows.length} quotes available · Google Finance via your private Sheet · quotes may be delayed up to 20 minutes.`:"No current market quotes available; missing or stale values are hidden.";
     } catch(error) {
       if(current!==epoch) return;
       marketRows=[]; marketStatus="Market quotes unavailable. Portfolio data remains available.";
@@ -217,17 +212,17 @@ function renderMonthlyBars() {
   }).join("") || `<p class="empty">No monthly P/L available.</p>`;
 }
 function renderMarket() {
-  const bySymbol=new Map(marketRows.map(row=>[row.symbol,row]));
   const marketPercent=value=>Number.isFinite(value)?new Intl.NumberFormat("en-HK",{style:"percent",minimumFractionDigits:2,maximumFractionDigits:2}).format(value):"—";
   const changeClass=value=>Number.isFinite(value)?value>0?"up":value<0?"down":"flat":"";
-  $("market-rows").innerHTML=MARKET_ITEMS.map(([symbol,label])=>{
-    const row=bySymbol.get(symbol),[exchange,ticker]=symbol.split(":"),url=`https://www.google.com/finance/quote/${encodeURIComponent(ticker)}:${encodeURIComponent(exchange)}`;
-    const detail=symbol.startsWith("INDEX")?symbol:(row?.name||symbol);
+  $("market-rows").innerHTML=marketRows.map(row=>{
+    const symbol=row.symbol,[exchange,ticker]=symbol.split(":"),label=row.name||ticker||symbol;
+    const url=ticker?`https://www.google.com/finance/quote/${encodeURIComponent(ticker)}:${encodeURIComponent(exchange)}`:`https://www.google.com/finance/search?q=${encodeURIComponent(symbol)}`;
+    const detail=symbol;
     const price=row?.price,high=row?.high,low=row?.low;
     const validRange=Number.isFinite(price)&&Number.isFinite(high)&&Number.isFinite(low)&&high>low&&low>0;
     const progress=validRange?Math.max(0,Math.min(100,(price-low)/(high-low)*100)):0;
     return `<tr><td class="market-symbol"><a href="${url}" target="_blank" rel="noopener noreferrer">${esc(label)} ↗</a><small>${esc(detail)}</small></td><td class="numeric market-quote">${Number.isFinite(price)?number(price,2):"—"}<small>${symbol.startsWith("INDEX")?"points":"USD"}</small></td><td class="numeric market-change ${changeClass(row?.day)}">${marketPercent(row?.day)}</td><td class="numeric market-change ${changeClass(row?.week)}">${marketPercent(row?.week)}</td><td class="market-range-cell"><div class="market-range-values"><span>${Number.isFinite(low)?number(low,2):"—"}</span><span>${Number.isFinite(high)?number(high,2):"—"}</span></div><div class="market-range-track">${validRange?`<i style="left:${progress.toFixed(1)}%"></i>`:""}</div></td><td class="market-updated">${row?.updatedAt?esc(row.updatedAt):"—"}</td></tr>`;
-  }).join("");
+  }).join("")||'<tr><td colspan="6" class="empty">No symbols in Market Watch. Add a row in your private Google Sheet.</td></tr>';
   const latest=marketRows.map(row=>row.updatedAt).filter(Boolean).sort().at(-1);
   $("market-updated").textContent=latest?`Latest source quote: ${latest}`:"Quote time unavailable";
   $("market-status").textContent=marketStatus;
