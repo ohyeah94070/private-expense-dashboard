@@ -8,6 +8,7 @@ p[3].values=[["Month","Trades","Deposits HKD","Withdrawals HKD","Dividends USD",
 [597130,590167,6962,80970,104951,1903,-2,-534,7.8455].forEach((v,i)=>p[i+4].values=[[v]]);
 p[13].values=[["Month",...Array(13).fill("")],["2026-01",0,0,0,7.8,0,0,375010.79,0,0,6412.59,30000,375010.79,338598.2]];
 p[15].values=[["Month"],["2025-12",621171.87],["2026-01",631843.56,0,0,0,0,0,0,0,10671.69,7.8137,0,0,0,0,0,0,"https://drive.google.com/file/d/example/view"]];
+p[15].values[2][18]="2026-01-20";
 p[16].values=[["Month"],["2026-01","STOCK","VOO","Vanguard",43,700,30100,"USD",235000]];
 p[17].values=[["Metric","Value"],["Snapshot UTC","2026-10-29T00:00:00Z"],["Account value",614354.68],["Market value",546959.99],["Cash",67394.69],["Cumulative unrealized P/L",105957.52],["API snapshot","https://drive.google.com/file/d/example/view"],[],["Symbol"],["VOO","EQUITY",43,"USD",436.64,707.91,30440.13,11662.37]];
 p[18].values=[["Month"],["2026-01",375010.79,631843.56,1006854.35,30000,0,30000,6412.59,10671.69,17084.28,0]];
@@ -20,6 +21,7 @@ assert.equal(result.fx,7.8455);
 assert.equal(result.watchlist,undefined);
 assert.equal(result.history[0].openingNAV,338598.2);
 assert.equal(result.webullMonthly[1].pl,10671.69);
+assert.equal(result.webullMonthly[1].withdrawalDate,"2026-01-20");
 assert.equal(result.webullCurrent.positions[0].unrealized,11662.37);
 assert.equal(result.reconciliation[0].check,0);
 const ytd=accountYTD({asOf:"2026-10-28",metrics:{totalHKD:604839.18},history:[{month:"2026-01",openingNAV:338598.1999599248}],months:[

@@ -106,7 +106,7 @@
     const webullMonthly=rows(p[15]).slice(1).filter(r=>/^\d{4}-\d{2}$/.test(text(r[0]))).map(r=>({
       month:text(r[0]),nav:n(r[1]),cash:n(r[2]),stocks:n(r[3]),funds:n(r[4]),amc:n(r[5]),
       deposits:n(r[6]),withdrawals:n(r[7]),funding:n(r[8]),pl:n(r[9]),fx:n(r[10]),
-      dividends:n(r[11]),fees:n(r[12]),interest:n(r[13]),other:n(r[14]),statement:text(r[17])
+      dividends:n(r[11]),fees:n(r[12]),interest:n(r[13]),other:n(r[14]),statement:text(r[17]),withdrawalDate:text(r[18])
     }));
     const webullHoldings=rows(p[16]).slice(1).filter(r=>/^\d{4}-\d{2}$/.test(text(r[0]))).map(r=>({
       month:text(r[0]),type:text(r[1]),symbol:text(r[2]),name:text(r[3]),shares:n(r[4]),

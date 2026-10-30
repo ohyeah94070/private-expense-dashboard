@@ -7,7 +7,7 @@ const PORTFOLIO_RANGES = [
   "'Dashboard'!E6", "'Dashboard'!A10", "'Dashboard'!C10", "'Dashboard'!E10",
   "'Dashboard'!G10", "'Dashboard'!I10", "'README'!B18",
   "'Monthly Summary'!A1:N100", "'Monthly Valuation'!A1:I100",
-  "'Webull Monthly'!A1:R100", "'Webull Holdings'!A1:I200",
+  "'Webull Monthly'!A1:S100", "'Webull Holdings'!A1:I200",
   "'Webull Current'!A1:I50", "'Broker Reconciliation'!A1:L100",
   "'Webull Executions'!A1:J1000"
 ];

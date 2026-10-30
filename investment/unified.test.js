@@ -10,13 +10,17 @@ assert.equal(U.summary(d,"current").cash,640);assert.equal(U.summary(d,"current"
 assert.equal(U.summary(d,"current").nav,3800);
 assert.equal(U.summary(d,"current").ytdPL,500);
 assert.equal(U.monthly(d)[0].nav,2300);assert.equal(U.monthly(d)[0].pl,300);assert.equal(U.monthly(d)[0].monthlyReturn,0.15);
-assert.equal(U.monthly(d)[1].funding,0);assert.equal(U.monthly(d)[1].pl,200);assert.equal(U.monthly(d)[1].status,"Reconciliation required");
+assert.equal(U.monthly(d)[1].funding,0);assert.equal(U.monthly(d)[1].pl,200);assert.equal(U.monthly(d)[1].status,"Complete");
 assert.ok(Math.abs(U.monthly(d,"IBKR")[1].monthlyReturn-50/1225)<1e-10);
 assert.match(U.monthly(d,"IBKR")[1].returnMethod,/Estimate/);
 const dated={...d,cash:[...d.cash,{id:"D1",date:"2026-02-23",type:"DEPOSIT",currency:"HKD",amount:50}]};
 const expectedWeight=50*(28-23+1)/28;
 assert.ok(Math.abs(U.monthly(dated,"IBKR")[1].monthlyReturn-50/(1200+expectedWeight))<1e-10);
 assert.match(U.monthly(dated,"IBKR")[1].returnMethod,/Modified Dietz/);
+const twoDatedFlows={...dated,webullMonthly:d.webullMonthly.map(x=>x.month==="2026-02"?{...x,deposits:0,withdrawals:-50,funding:-50,withdrawalDate:"2026-02-08"}:x)};
+const combinedWeight=50*(28-23+1)/28-50*(28-8+1)/28;
+assert.ok(Math.abs(U.monthly(twoDatedFlows)[1].monthlyReturn-200/(2300+combinedWeight))<1e-10);
+assert.match(U.monthly(twoDatedFlows)[1].returnMethod,/Modified Dietz/);
 const offset={...d,webullMonthly:d.webullMonthly.map(x=>x.month==="2026-02"?{...x,deposits:100,withdrawals:-100,funding:0}:x)};
 assert.match(U.monthly(offset)[1].returnMethod,/Estimate/);
 const stockData={...d,months:[],webullHoldings:[
