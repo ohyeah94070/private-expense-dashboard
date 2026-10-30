@@ -55,16 +55,18 @@ assert.equal(historicalHoldings[0].averageCost,23001.25/464);
 assert.equal(holdingsForPeriod({positions:result.positions,valuations:[]},"current")[0].shares,326);
 assert.ok(Math.abs(cashUSDForPeriod(result,"current")-6962/7.8455)<0.0001);
 assert.ok(Math.abs(cashUSDForPeriod({history:[{month:"2026-02",cashUSD:100,cashHKD:780,fx:7.8}]},"2026-02")-200)<0.0001);
-const quoteRows=[["Symbol","Name","Price","1D %","1W %","52W High","52W Low","Updated At"],
+const quoteRows=[["Symbol","Name","Price","1D %","1W %","52W High","52W Low","Updated At","P/E (Google)"],
   ["INDEXSP:.INX","S&P 500",7722.6,0.006,0.0013,7844.52,6316.91,"2026-10-27 16:48"],
   ["NASDAQ:SOXX","SOXX",511.06,"",0.0221,655.95,260.44,"2026-10-27 16:00"],
-  ["NASDAQ:MU","MU",928.76,0,0.0365,1255,192.59,"2026-10-01 16:00"],
+  ["NASDAQ:MU","MU",928.76,0,0.0365,1255,192.59,"2026-10-01 16:00",12.02],
   ["NASDAQ:ZERO","Missing",0,0,0,0,0,"2026-10-27 16:00"]];
 const quotes=parseMarket(quoteRows,Date.UTC(2026,9,28));
 assert.equal(quotes[0].day,0.006);
 assert.equal(quotes[0].week,0.0013);
+assert.ok(Number.isNaN(quotes[0].pe));
 assert.ok(Number.isNaN(quotes[1].day));
 assert.ok(Number.isNaN(quotes[2].price));
+assert.ok(Number.isNaN(quotes[2].pe));
 assert.equal(quotes[2].stale,true);
 assert.ok(Number.isNaN(quotes[3].price));
 assert.equal(quotes[3].day,0);

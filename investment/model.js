@@ -70,7 +70,7 @@
       const positive=index=>metric(index)>0?metric(index):NaN;
       let high=positive(5),low=positive(6);
       if(high<low) high=low=NaN;
-      return {symbol:text(row[0]),name:text(row[1]),price:positive(2),day:metric(3),week:metric(4),high,low,updatedAt:fresh?updatedAt:"",stale:!fresh};
+      return {symbol:text(row[0]),name:text(row[1]),price:positive(2),day:metric(3),week:metric(4),high,low,pe:positive(8),updatedAt:fresh?updatedAt:"",stale:!fresh};
     });
   }
   function parse(portfolio) {

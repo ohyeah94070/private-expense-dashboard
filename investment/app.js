@@ -11,7 +11,7 @@ const PORTFOLIO_RANGES = [
   "'Webull Current'!A1:I50", "'Broker Reconciliation'!A1:L100",
   "'Webull Executions'!A1:J1000"
 ];
-const MARKET_RANGE = ["'Market Watch'!A1:H50"];
+const MARKET_RANGE = ["'Market Watch'!A1:I50"];
 const $ = id => document.getElementById(id);
 const esc = x => String(x ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money = (x, ccy="HKD") => Number.isFinite(x) ? `${x<0?"(":""}${ccy==="HKD"?"HK$":"$"}${new Intl.NumberFormat("en-HK",{minimumFractionDigits:2,maximumFractionDigits:2}).format(Math.abs(x))}${x<0?")":""}` : "—";
@@ -221,8 +221,8 @@ function renderMarket() {
     const price=row?.price,high=row?.high,low=row?.low;
     const validRange=Number.isFinite(price)&&Number.isFinite(high)&&Number.isFinite(low)&&high>low&&low>0;
     const progress=validRange?Math.max(0,Math.min(100,(price-low)/(high-low)*100)):0;
-    return `<tr><td class="market-symbol"><a href="${url}" target="_blank" rel="noopener noreferrer">${esc(label)} ↗</a><small>${esc(detail)}</small></td><td class="numeric market-quote">${Number.isFinite(price)?number(price,2):"—"}<small>${symbol.startsWith("INDEX")?"points":"USD"}</small></td><td class="numeric market-change ${changeClass(row?.day)}">${marketPercent(row?.day)}</td><td class="numeric market-change ${changeClass(row?.week)}">${marketPercent(row?.week)}</td><td class="market-range-cell"><div class="market-range-values"><span>${Number.isFinite(low)?number(low,2):"—"}</span><span>${Number.isFinite(high)?number(high,2):"—"}</span></div><div class="market-range-track">${validRange?`<i style="left:${progress.toFixed(1)}%"></i>`:""}</div></td><td class="market-updated">${row?.updatedAt?esc(row.updatedAt):"—"}</td></tr>`;
-  }).join("")||'<tr><td colspan="6" class="empty">No symbols in Market Watch. Add a row in your private Google Sheet.</td></tr>';
+    return `<tr><td class="market-symbol"><a href="${url}" target="_blank" rel="noopener noreferrer">${esc(label)} ↗</a><small>${esc(detail)}</small></td><td class="numeric market-quote">${Number.isFinite(price)?number(price,2):"—"}<small>${symbol.startsWith("INDEX")?"points":"USD"}</small></td><td class="numeric">${Number.isFinite(row.pe)?number(row.pe,2):"—"}</td><td class="numeric market-change ${changeClass(row?.day)}">${marketPercent(row?.day)}</td><td class="numeric market-change ${changeClass(row?.week)}">${marketPercent(row?.week)}</td><td class="market-range-cell"><div class="market-range-values"><span>${Number.isFinite(low)?number(low,2):"—"}</span><span>${Number.isFinite(high)?number(high,2):"—"}</span></div><div class="market-range-track">${validRange?`<i style="left:${progress.toFixed(1)}%"></i>`:""}</div></td><td class="market-updated">${row?.updatedAt?esc(row.updatedAt):"—"}</td></tr>`;
+  }).join("")||'<tr><td colspan="7" class="empty">No symbols in Market Watch. Add a row in your private Google Sheet.</td></tr>';
   const latest=marketRows.map(row=>row.updatedAt).filter(Boolean).sort().at(-1);
   $("market-updated").textContent=latest?`Latest source quote: ${latest}`:"Quote time unavailable";
   $("market-status").textContent=marketStatus;

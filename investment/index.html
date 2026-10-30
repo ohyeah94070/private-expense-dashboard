@@ -8,9 +8,9 @@
   <meta name="description" content="Private investment performance dashboard with monthly portfolio results.">
   <link rel="stylesheet" href="./style.css?v=11">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./model.js?v=11" defer></script>
+  <script src="./model.js?v=12" defer></script>
   <script src="./unified.js?v=3" defer></script>
-  <script src="./app.js?v=20" defer></script>
+  <script src="./app.js?v=21" defer></script>
   <script src="./unified-app.js?v=4" defer></script>
 </head>
 <body>
@@ -67,10 +67,10 @@
 
       <section id="view-watchlist" class="view" hidden>
         <div class="section-title"><div><p class="eyebrow">MARKET WATCH</p><h2>Stocks, ETFs & indices</h2></div><span id="market-updated" class="muted">Quote time unavailable</span></div>
-        <article class="panel market-panel"><div class="table-wrap"><table class="market-table"><thead><tr><th>Symbol</th><th class="numeric">Latest price</th><th class="numeric">1D change</th><th class="numeric">1W change</th><th>52W range</th><th>Updated at</th></tr></thead><tbody id="market-rows" aria-live="polite"></tbody></table></div></article>
+        <article class="panel market-panel"><div class="table-wrap"><table class="market-table"><thead><tr><th>Symbol</th><th class="numeric">Latest price</th><th class="numeric">P/E</th><th class="numeric">1D change</th><th class="numeric">1W change</th><th>52W range</th><th>Updated at</th></tr></thead><tbody id="market-rows" aria-live="polite"></tbody></table></div></article>
         <p id="market-status" class="data-note">Connect Google to load market quotes.</p>
         <p class="data-note">Add a stock: enter its exchange and ticker in column A (for example, NASDAQ:MSFT) and its name in column B of the next blank row in your <a href="https://docs.google.com/spreadsheets/d/17026aWw5dDT3-bh9i_W8VMkIzW8K0EQYiWeIUtICYA0/edit#gid=127048726" target="_blank" rel="noopener noreferrer">private Market Watch sheet ↗</a>, then refresh this page.</p>
-        <p class="data-note">S&amp;P 500 and Nasdaq 100 are index quotes. Prices and changes come from Google Finance through your private Google Sheet. Quote times are shown as reported by the source and may be delayed.</p>
+        <p class="data-note">S&amp;P 500 and Nasdaq 100 are index quotes. Prices, changes and P/E come from Google Finance through your private Google Sheet. P/E is Google's reported ratio; its trailing/forward basis is not specified, and unavailable values show —. Quote times may be delayed.</p>
       </section>
     </div>
   </main>
