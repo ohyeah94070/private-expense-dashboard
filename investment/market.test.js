@@ -34,6 +34,7 @@ assert.equal(elements.get("market-status").textContent,"3 of 3 quotes available"
 assert.equal(elements.get("market-price-date").textContent,"Mostly Oct 27, 2026");
 assert.doesNotMatch(html,/market-updated/);
 assert.equal(vm.runInContext("MARKET_RANGE[0]",context),"'Market Watch'!A1:I50");
+assert.equal(vm.runInContext("PORTFOLIO_RANGES[3]",context),"IBKR_ACCOUNT_VALUE_HKD");
 const portfolio={valueRanges:Array.from({length:15},()=>({values:[]}))};
 portfolio.valueRanges[0].values=[["As-of date","Broker","Symbol","Shares","Currency","Average cost","Last price","Market value","Unrealized P/L"],["2026-10-28","IBKR","QLD",1,"USD",100,110,110,10]];
 portfolio.valueRanges[3].values=[[1000]];

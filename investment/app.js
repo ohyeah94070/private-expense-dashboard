@@ -3,9 +3,9 @@ const GOOGLE_CLIENT_ID = "110894641783-ranndo8u0vmmbq0c59g2vehma2vla4g6.apps.goo
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const PORTFOLIO_RANGES = [
   "'Positions'!A4:I1000", "'Trades'!A4:L1000", "'Cash Ledger'!A4:I1000",
-  "'Portfolio Home'!K4", "'Portfolio Home'!K5",
-  "'Portfolio Home'!K6", "'Portfolio Home'!K7", "'Portfolio Home'!K8", "'Portfolio Home'!K9",
-  "'Portfolio Home'!K10", "'Portfolio Home'!K11", "'Portfolio Home'!K13",
+  "IBKR_ACCOUNT_VALUE_HKD", "IBKR_EQUITY_HKD",
+  "IBKR_CASH_HKD", "IBKR_OPEN_PL_HKD", "IBKR_REALIZED_PL_HKD", "IBKR_DIVIDENDS_HKD",
+  "IBKR_INTEREST_HKD", "IBKR_TAX_HKD", "PORTFOLIO_USDHKD_RATE",
   "'Monthly Summary'!A1:N100", "'Monthly Valuation'!A1:I100",
   "'Webull Monthly'!A1:S100", "'Webull Holdings'!A1:I200",
   "'Webull Current'!A1:I50", "'Broker Reconciliation'!A1:L100",
