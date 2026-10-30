@@ -8,6 +8,7 @@ assert.equal(mu.quantity,15);assert.equal(mu.costBasis,110);assert.equal(mu.aver
 assert.equal(g.find(x=>x.symbol==="AAPL").parts.length,1);assert.equal(g.find(x=>x.symbol==="TSM").parts.length,1);
 assert.equal(U.summary(d,"current").cash,640);assert.equal(U.summary(d,"current","IBKR").cash,240);assert.equal(U.summary(d,"current","Webull").cash,400);
 assert.equal(U.summary(d,"current").nav,3800);
+assert.equal(U.summary(d,"current").ytdPL,500);
 assert.equal(U.monthly(d)[0].nav,2300);assert.equal(U.monthly(d)[0].pl,300);assert.equal(U.monthly(d)[0].monthlyReturn,0.15);
 assert.equal(U.monthly(d)[1].funding,0);assert.equal(U.monthly(d)[1].pl,200);assert.equal(U.monthly(d)[1].status,"Reconciliation required");
 assert.ok(Number.isNaN(U.monthly(d,"IBKR")[1].monthlyReturn));

@@ -72,7 +72,9 @@ async function load() {
     const portfolio = await batchGet(BROKERAGE_SHEET,PORTFOLIO_RANGES,accessToken);
     if (current!==epoch) return;
     const next = PortfolioModel.parse(portfolio);
-    if (!next.positions.length || !Number.isFinite(next.metrics.totalHKD)) throw new Error("The brokerage sheet did not return its expected position and dashboard data.");
+    if ((!next.positions.length && !next.webullCurrent.positions.length) ||
+        (!Number.isFinite(next.metrics.totalHKD) && !Number.isFinite(next.webullCurrent.nav)))
+      throw new Error("Neither broker returned enough account data to display the portfolio.");
     data=next;
     marketRows=[]; marketStatus="Loading market quotes…";
     $("setup").hidden=true; $("app").hidden=false;
@@ -160,7 +162,7 @@ function renderWebullHoldings() {
   $("webull-holdings-note").textContent=current?`API positions as of ${data.webullCurrent.asOf}. Open P/L uses API cost basis.`:"Month-end quantities, prices and values come from Webull statements. Historical open P/L is unavailable because those statements do not provide cost basis; the monthly account P/L above uses official NAV.";
 }
 function renderWebullCash() {
-  $("webull-cash-rows").innerHTML=data.webullMonthly.map(x=>`<tr><td>${esc(x.month)}</td><td class="numeric">${money(x.deposits)}</td><td class="numeric ${signClass(x.withdrawals)}">${money(x.withdrawals)}</td><td class="numeric ${signClass(x.dividends)}">${money(x.dividends)}</td><td class="numeric ${signClass(x.fees)}">${money(x.fees)}</td><td class="numeric ${signClass(x.other)}">${money(x.other)}</td><td>${x.statement?`<a href="${esc(x.statement)}" target="_blank" rel="noopener noreferrer">Open ↗</a>`:"—"}</td></tr>`).join("");
+  $("webull-cash-rows").innerHTML=data.webullMonthly.map(x=>`<tr><td>${esc(x.month)}</td><td class="numeric">${money(x.deposits)}</td><td class="numeric ${signClass(x.withdrawals)}">${money(x.withdrawals)}</td><td class="numeric ${signClass(x.dividends)}">${money(x.dividends)}</td><td class="numeric ${signClass(x.fees)}">${money(x.fees)}</td><td class="numeric ${signClass(x.other)}">${money(x.other)}</td><td>${x.statement?`${esc(x.statement)}`:"—"}</td></tr>`).join("");
 }
 function renderAllocation() {
   const period=$("overview-period").value;
