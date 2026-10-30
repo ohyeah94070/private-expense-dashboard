@@ -45,6 +45,38 @@ function renderUnifiedOverview(period,filter,s){
   const total=all.reduce((a,b)=>a+b.value,0);
   $("unified-allocation").innerHTML=all.map(x=>`<div class="allocation-row"><div class="allocation-meta"><b>${esc(x.name)}</b><span>${uMoney(x.value)} <em>${percent(total>0?x.value/total:NaN)}</em></span></div><div class="bar-track"><span style="width:${Math.max(0,Math.min(100,total>0?x.value/total*100:0)).toFixed(1)}%"></span></div></div>`).join("")||'<p class="empty">No allocation data.</p>';
   $("unified-stock-pl").innerHTML=holdings.map(x=>`<tr><td><strong>${esc(x.symbol)}</strong><small> ${esc(x.currency)}</small></td><td class="numeric">${number(x.quantity,2)}</td><td class="numeric">${uMoney(x.marketValue,x.currency)}</td><td class="numeric ${signClass(x.unrealizedPL)}">${uMoney(x.unrealizedPL,x.currency)}</td><td>${Number.isFinite(x.unrealizedPL)?"Available":"Partial"}</td></tr>`).join("")||'<tr><td colspan="5" class="empty">No positions.</td></tr>';
+  const open=UnifiedPortfolio.openPositions(data,period,filter),hasOpen=open.some(x=>x.partsOpen.some(p=>Number.isFinite(p.value)));
+  const incomplete=open.some(x=>x.coverage==="Partial"),knownOpen=hasOpen?open.reduce((sum,x)=>sum+x.knownOpenHKD,0):NaN;
+  if(incomplete&&period!=="current"){
+    const kpi=$("unified-overview").querySelector(".overview-metrics .metric:nth-child(4)");
+    kpi.querySelector("span").textContent="Known open P/L · partial";
+    kpi.querySelector("strong").textContent=uMoney(knownOpen);
+    kpi.querySelector("strong").className=signClass(knownOpen);
+    kpi.querySelector("small").textContent="Webull historical cost basis missing";
+  }
+  const stockTable=$("unified-stock-pl").closest("table");
+  stockTable.querySelector("thead").innerHTML="<tr><th>Symbol</th><th class='numeric'>IBKR open P/L</th><th class='numeric'>Webull open P/L</th><th class='numeric'>Combined open P/L</th><th>Coverage</th></tr>";
+  $("unified-stock-pl").innerHTML=open.map(x=>{
+    const broker=b=>x.partsOpen.filter(p=>p.broker===b),value=b=>broker(b).length?broker(b).every(p=>Number.isFinite(p.value))?broker(b).reduce((sum,p)=>sum+p.value,0):NaN:NaN;
+    const ibkr=value("IBKR"),webull=value("Webull");
+    return `<tr><td><strong>${esc(x.symbol)}</strong> <small>${esc(x.assetType)}</small></td><td class="numeric ${signClass(ibkr)}">${uMoney(ibkr)}</td><td class="numeric ${signClass(webull)}">${uMoney(webull)}</td><td class="numeric ${signClass(x.combinedOpenHKD)}"><strong>${uMoney(x.combinedOpenHKD)}</strong></td><td>${esc(x.coverage)}</td></tr>`;
+  }).join("")||'<tr><td colspan="5" class="empty">No positions.</td></tr>';
+  const openNote=stockTable.closest(".panel").querySelector(".panel-note");
+  openNote.textContent=period==="current"?"Cumulative gain or loss on shares still held. IBKR and Webull snapshots can have different dates; the combined figure is indicative.":"Cumulative gain or loss at this month end, not this month's gain. IBKR uses reconstructed historical cost; Webull statements lack historical cost, so its open P/L and any affected combined row remain unavailable.";
+  renderPortfolioResult(period,filter,s);
+  const monthlyPanel=$("unified-overview").querySelector(".panel");
+  const monthlyBody=monthlyPanel.querySelector("tbody");
+  rows.forEach((r,i)=>{const cell=monthlyBody.rows[i]?.cells[6];if(cell){cell.title=r.returnMethod;if(r.returnMethod.startsWith("Estimate"))cell.insertAdjacentHTML("beforeend",'<small class="return-estimate">estimate</small>')}});
+  monthlyPanel.querySelector(".panel-note").textContent="Return uses the combined opening NAV and combined external funding. Dated IBKR flows use Modified Dietz; when a funding date is unavailable, the result estimates a mid-month flow and is labeled estimate. June's transfer linkage still requires review. Monthly P/L remains the official NAV change after funding.";
+  $("unified-overview").append(monthlyPanel);
+}
+function renderPortfolioResult(period,filter,s){
+  const month=period==="current"?s.lastComplete?.month:period,breakdown=month?UnifiedPortfolio.resultBreakdown(data,month,filter):null;
+  const panel=$("unified-overview").querySelector(".panel-grid .panel:nth-child(2)");
+  if(!breakdown){panel.innerHTML='<h2>Portfolio result</h2><p class="empty">No reconciled month available.</p>';return}
+  const audit=UnifiedPortfolio.auditMonth(data,month),stockRows=breakdown.stocks.map(x=>`<tr><td>${esc(x.symbol)}</td><td>${esc(x.broker)}</td><td class="numeric ${signClass(x.value)}">${uMoney(x.value)}</td><td>${esc(x.status)}</td></tr>`).join("");
+  const checkRows=audit?[["Official NAV sum",audit.checks.combinedNAV],["Monthly P/L source",audit.checks.monthlyPL],["IBKR funding ledger",audit.checks.ibkrFunding],["Webull funding statement",audit.checks.webullFunding],["Webull assets vs NAV",audit.checks.webullAssets],["IBKR reconstructed NAV variance",audit.checks.ibkrReconstructed]]:[];
+  panel.innerHTML=`<div class="panel-head"><div><p class="eyebrow">PROFIT & LOSS · ${esc(month)}</p><h2>Portfolio result</h2></div></div><div class="pnl-row pnl-total"><span>Total portfolio P/L</span><strong class="${signClass(breakdown.total)}">${uMoney(breakdown.total)}</strong></div><div class="pnl-row"><span>Known stock P/L</span><strong class="${signClass(breakdown.knownStock)}">${uMoney(breakdown.knownStock)}</strong></div>${breakdown.lines.map(x=>`<div class="pnl-row"><span>${esc(x.label)}</span><strong class="${signClass(x.value)}">${uMoney(x.value)}</strong></div>`).join("")}<div class="pnl-row"><span>Other / unallocated</span><strong class="${signClass(breakdown.other)}">${uMoney(breakdown.other)}</strong></div><p class="panel-note">Other is the residual to official portfolio P/L. It can include fund movement, FX, fees, and stock results with missing cost or trade detail; it is not a separately verified gain.</p><h3 class="result-subhead">Stock P/L by position</h3><div class="table-wrap"><table class="result-table"><thead><tr><th>Symbol</th><th>Broker</th><th class="numeric">Stock P/L HKD</th><th>Basis</th></tr></thead><tbody>${stockRows||'<tr><td colspan="4" class="empty">No stock-level result.</td></tr>'}</tbody></table></div><h3 class="result-subhead">Source checks</h3><div class="result-checks">${checkRows.map(([label,value])=>`<div><span>${esc(label)}</span><strong class="${Number.isFinite(value)&&Math.abs(value)>1?"negative":""}">${uMoney(value)}</strong></div>`).join("")}</div><p class="panel-note">A zero arithmetic check confirms the loaded Sheet values agree; it does not independently certify the source statement. Compare broker NAV and funding with the original statements. ${audit?.note?esc(audit.note):""}</p>`;
 }
 function renderUnifiedHoldings(period,filter,s){
   const raw=UnifiedPortfolio.positions(data,period,filter),groups=UnifiedPortfolio.aggregatePositions(raw);

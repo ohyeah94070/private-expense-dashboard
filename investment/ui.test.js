@@ -10,7 +10,7 @@ async function check(viewport){
   const errors=[];page.on("pageerror",e=>errors.push(e.message));
   await page.goto(pathToFileURL(path.join(__dirname,"index.html")).href,{waitUntil:"domcontentloaded"});
   await page.waitForFunction(()=>typeof renderUnified==="function");
-  await page.evaluate(d=>{data=d;document.getElementById("setup").hidden=true;document.getElementById("app").hidden=false;renderUnified()},fixture);
+  await page.evaluate(d=>{d.valuations=[{month:"2026-01",symbol:"MU",shares:10,close:10,marketValue:100,costBasis:80,unrealized:20}];d.webullHoldings=[{month:"2026-01",type:"STOCK",symbol:"MU",shares:5,price:10,marketValue:50,currency:"USD",hkd:390}];data=d;document.getElementById("setup").hidden=true;document.getElementById("app").hidden=false;renderUnified()},fixture);
   assert.equal(await page.locator("#broker-filter").inputValue(),"ALL");
   assert.match(await page.locator("#unified-holdings").innerText(),/MU/);
   assert.match(await page.locator("#unified-activity").innerText(),/Webull/);
@@ -18,6 +18,9 @@ async function check(viewport){
   assert.match(await page.locator("#unified-overview").innerText(),/Webull/);
   await page.locator("#overview-period").selectOption("2026-01");
   assert.match(await page.locator("#unified-overview").innerText(),/2,300|1,100/);
+  assert.match(await page.locator("#unified-overview").innerText(),/Known open P\/L · partial/);
+  assert.equal(await page.evaluate(()=>document.querySelector("#unified-overview").lastElementChild.textContent.includes("Monthly portfolio performance")),true);
+  assert.match(await page.locator("#unified-overview").innerText(),/Stock P\/L by position/);
   await page.locator("#broker-filter").selectOption("ALL");
   await page.locator("#overview-period").selectOption("current");
   await page.locator('[data-tab="activity"]').click();

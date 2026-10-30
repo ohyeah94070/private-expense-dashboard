@@ -11,7 +11,34 @@ assert.equal(U.summary(d,"current").nav,3800);
 assert.equal(U.summary(d,"current").ytdPL,500);
 assert.equal(U.monthly(d)[0].nav,2300);assert.equal(U.monthly(d)[0].pl,300);assert.equal(U.monthly(d)[0].monthlyReturn,0.15);
 assert.equal(U.monthly(d)[1].funding,0);assert.equal(U.monthly(d)[1].pl,200);assert.equal(U.monthly(d)[1].status,"Reconciliation required");
-assert.ok(Number.isNaN(U.monthly(d,"IBKR")[1].monthlyReturn));
+assert.ok(Math.abs(U.monthly(d,"IBKR")[1].monthlyReturn-50/1225)<1e-10);
+assert.match(U.monthly(d,"IBKR")[1].returnMethod,/Estimate/);
+const dated={...d,cash:[...d.cash,{id:"D1",date:"2026-02-23",type:"DEPOSIT",currency:"HKD",amount:50}]};
+const expectedWeight=50*(28-23+1)/28;
+assert.ok(Math.abs(U.monthly(dated,"IBKR")[1].monthlyReturn-50/(1200+expectedWeight))<1e-10);
+assert.match(U.monthly(dated,"IBKR")[1].returnMethod,/Modified Dietz/);
+const offset={...d,webullMonthly:d.webullMonthly.map(x=>x.month==="2026-02"?{...x,deposits:100,withdrawals:-100,funding:0}:x)};
+assert.match(U.monthly(offset)[1].returnMethod,/Estimate/);
+const stockData={...d,months:[],webullHoldings:[
+ {month:"2025-12",type:"STOCK",symbol:"VOO",shares:10,hkd:780},
+ {month:"2026-01",type:"STOCK",symbol:"VOO",shares:10,hkd:858},
+ {month:"2026-02",type:"STOCK",symbol:"VOO",shares:5,hkd:468},
+ {month:"2026-02",type:"STOCK",symbol:"QLD",shares:5,hkd:468}
+],webullExecutions:[
+ {id:"S1",date:"2026-02-10",symbol:"VOO",side:"SELL",quantity:5,price:10,currency:"USD",amount:50},
+ {id:"B1",date:"2026-02-11",symbol:"QLD",side:"BUY",quantity:5,price:10,currency:"USD",amount:-50}
+]};
+const stockRows=U.monthlyStocks(stockData,"2026-02","Webull");
+assert.equal(stockRows.find(x=>x.symbol==="VOO").value,0);
+assert.equal(stockRows.find(x=>x.symbol==="QLD").value,78);
+assert.equal(U.monthlyStocks(stockData,"2026-01","Webull")[0].value,78);
+assert.ok(Number.isNaN(U.openPositions(stockData,"2026-02","Webull")[0].combinedOpenHKD));
+assert.equal(U.resultBreakdown(stockData,"2026-02","Webull").knownStock,78);
+const missingFills={...stockData,webullExecutions:[]};
+assert.ok(Number.isNaN(U.monthlyStocks(missingFills,"2026-02","Webull")[0].value));
+assert.equal(U.resultBreakdown(missingFills,"2026-02","Webull").partial,true);
+const auditData={...d,reconciliation:d.reconciliation.map(x=>({...x,combinedNAV:x.ibkrNAV+x.webullNAV}))};
+assert.equal(U.auditMonth(auditData,"2026-01").checks.combinedNAV,0);
 const acts=U.activities(d);assert.equal(acts.length,5);assert.equal(acts[0].broker,"Webull");assert.equal(acts.at(-1).type,"BUY");assert.equal(acts.find(x=>x.type==="DIVIDEND").amount,2);assert.equal(acts.find(x=>x.type==="WITHHOLDING_TAX").amount,-0.3);
 assert.equal(U.activities(d,"Webull").length,1);assert.equal(U.activities(d,"IBKR").length,4);
 const partial={...d,webullCurrent:{...d.webullCurrent,unrealized:NaN}};assert.ok(Number.isNaN(U.summary(partial,"current").unrealized));

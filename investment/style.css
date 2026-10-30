@@ -17,3 +17,9 @@ details summary{cursor:pointer;color:#176e66}details[open] summary{margin-bottom
 #unified-holdings .metric strong{font-size:clamp(18px,2vw,27px)}
 #unified-activity .table-wrap{max-height:620px}
 .hero select{margin-right:10px}
+#unified-overview .panel-grid{grid-template-columns:1fr}
+.result-subhead{font-size:14px;margin:21px 0 9px;color:var(--ink)}
+.result-table{min-width:430px}.result-table td,.result-table th{padding:8px 9px}
+.result-checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 18px;font-size:11px}.result-checks>div{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line)}.result-checks span{color:var(--muted)}.result-checks strong{white-space:nowrap;font-variant-numeric:tabular-nums}
+.return-estimate{display:block;color:#9a5b12;font-size:10px;font-weight:600}
+@media(max-width:600px){.result-checks{grid-template-columns:1fr}}

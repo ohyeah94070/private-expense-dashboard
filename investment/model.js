@@ -96,7 +96,7 @@
     }));
     const history=rows(p[13]).slice(1).filter(r=>/^\d{4}-\d{2}$/.test(text(r[0]))).map(r=>({
       month:text(r[0]),equityUSD:n(r[1]),cashUSD:n(r[2]),cashHKD:n(r[3]),fx:n(r[4]),
-      equityHKD:n(r[5]),cashTotalHKD:n(r[6]),totalHKD:n(r[12])||n(r[7]),unrealizedHKD:n(r[8]),
+      equityHKD:n(r[5]),cashTotalHKD:n(r[6]),totalHKD:n(r[12])||n(r[7]),reconstructedNAV:n(r[7]),officialNAV:n(r[12]),unrealizedHKD:n(r[8]),
       realizedUSD:n(r[9]),totalPL:n(r[10]),netFundingHKD:n(r[11]),openingNAV:n(r[13])
     }));
     const valuations=rows(p[14]).slice(1).filter(r=>/^\d{4}-\d{2}$/.test(text(r[0]))).map(r=>({
@@ -104,7 +104,7 @@
       costBasis:n(r[7]),unrealized:n(r[8])
     }));
     const webullMonthly=rows(p[15]).slice(1).filter(r=>/^\d{4}-\d{2}$/.test(text(r[0]))).map(r=>({
-      month:text(r[0]),nav:n(r[1]),cash:n(r[2]),stocks:n(r[3]),funds:n(r[4]),
+      month:text(r[0]),nav:n(r[1]),cash:n(r[2]),stocks:n(r[3]),funds:n(r[4]),amc:n(r[5]),
       deposits:n(r[6]),withdrawals:n(r[7]),funding:n(r[8]),pl:n(r[9]),fx:n(r[10]),
       dividends:n(r[11]),fees:n(r[12]),interest:n(r[13]),other:n(r[14]),statement:text(r[17])
     }));
