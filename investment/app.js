@@ -3,9 +3,9 @@ const GOOGLE_CLIENT_ID = "110894641783-ranndo8u0vmmbq0c59g2vehma2vla4g6.apps.goo
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const PORTFOLIO_RANGES = [
   "'Positions'!A4:I1000", "'Trades'!A4:L1000", "'Cash Ledger'!A4:I1000",
-  "'Monthly Activity'!A4:H100", "'Dashboard'!A6", "'Dashboard'!C6",
-  "'Dashboard'!E6", "'Dashboard'!A10", "'Dashboard'!C10", "'Dashboard'!E10",
-  "'Dashboard'!G10", "'Dashboard'!I10", "'README'!B18",
+  "'Monthly Activity'!A4:H100", "'Portfolio Home'!K4", "'Portfolio Home'!K5",
+  "'Portfolio Home'!K6", "'Portfolio Home'!K7", "'Portfolio Home'!K8", "'Portfolio Home'!K9",
+  "'Portfolio Home'!K10", "'Portfolio Home'!K11", "'README'!B18",
   "'Monthly Summary'!A1:N100", "'Monthly Valuation'!A1:I100",
   "'Webull Monthly'!A1:S100", "'Webull Holdings'!A1:I200",
   "'Webull Current'!A1:I50", "'Broker Reconciliation'!A1:L100",
