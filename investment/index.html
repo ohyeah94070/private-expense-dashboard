@@ -6,10 +6,12 @@
   <meta name="theme-color" content="#10283c">
   <title>Investment Review</title>
   <meta name="description" content="Private investment performance dashboard with monthly portfolio results.">
-  <link rel="stylesheet" href="./style.css?v=9">
+  <link rel="stylesheet" href="./style.css?v=10">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="./model.js?v=9" defer></script>
-  <script src="./app.js?v=17" defer></script>
+  <script src="./model.js?v=10" defer></script>
+  <script src="./unified.js?v=1" defer></script>
+  <script src="./app.js?v=18" defer></script>
+  <script src="./unified-app.js?v=1" defer></script>
 </head>
 <body>
 <div class="shell">
@@ -29,6 +31,7 @@
       <nav class="tabs" aria-label="Dashboard sections"><button class="tab active" data-tab="overview" type="button">Overview</button><button class="tab" data-tab="holdings" type="button">Holdings</button><button class="tab" data-tab="activity" type="button">Trades & cash</button><button class="tab" data-tab="watchlist" type="button">Watchlist</button></nav>
 
       <section id="view-overview" class="view">
+        <div id="unified-overview"></div><div class="legacy-view" hidden>
         <article class="panel"><div class="panel-head"><div><p class="eyebrow">BROKER RECONCILIATION</p><h2>Official month-end account values</h2></div></div><div class="metrics three"><article class="metric"><span>Combined · latest common month</span><strong id="combined-nav">—</strong><small id="combined-month"></small></article><article class="metric"><span>IBKR · month end</span><strong id="ibkr-month-nav">—</strong><small>Official NAV</small></article><article class="metric"><span>Webull · month end</span><strong id="webull-month-nav">—</strong><small>Official statement NAV</small></article></div><div class="table-wrap"><table><thead><tr><th>Month</th><th class="numeric">IBKR NAV</th><th class="numeric">Webull NAV</th><th class="numeric">Combined NAV</th><th class="numeric">IBKR P/L</th><th class="numeric">Webull P/L</th><th class="numeric">Combined P/L</th><th class="numeric">Net funding</th><th class="numeric">Check</th></tr></thead><tbody id="broker-reconciliation-rows"></tbody></table></div><p class="panel-note">Monthly P/L = official month-end value − prior month-end value − net funding. Broker funding stays separate; the June transfer relationship is not verified.</p></article>
         <article class="panel"><div class="panel-head"><div><p class="eyebrow">LATEST WEBULL DATA</p><h2>Webull now</h2></div></div><div class="metrics three"><article class="metric"><span>Account value</span><strong id="webull-current-nav">—</strong><small>HKD · Webull API</small></article><article class="metric"><span>Cash</span><strong id="webull-current-cash">—</strong><small>HKD</small></article><article class="metric"><span>Cumulative unrealized P/L</span><strong id="webull-current-open">—</strong><small>HKD · current holdings</small></article></div><p id="webull-current-note" class="panel-note"></p></article>
         <p class="eyebrow">IBKR DETAIL · SELECTED PERIOD</p>
@@ -37,17 +40,21 @@
         <article class="panel"><div class="panel-head"><div><p class="eyebrow">BY STOCK</p><h2 id="stock-pl-title">Stock P/L by symbol</h2></div></div><div class="table-wrap"><table><thead id="stock-pl-head"></thead><tbody id="stock-pl-rows"></tbody></table></div><p id="stock-pl-note" class="panel-note"></p></article>
         <article class="panel"><div class="panel-head"><div><p class="eyebrow">2026</p><h2>IBKR monthly profit & loss</h2></div></div><div id="monthly-bars" class="monthly-bars"></div><p class="panel-note">HKD profit or loss after recorded deposits and withdrawals. January uses IBKR's official 31 Dec 2025 opening account value.</p></article>
         <div class="source-note"><strong>Reading the numbers</strong><span id="overview-note">—</span></div>
+        </div>
       </section>
 
       <section id="view-holdings" class="view" hidden>
+        <div id="unified-holdings"></div><div class="legacy-view" hidden>
         <div class="section-title"><div><p id="holdings-scope" class="eyebrow">CURRENT POSITIONS</p><h2>Holdings & allocation</h2></div><span id="holding-asof" class="muted"></span></div>
         <div class="metrics holding-metrics"><article class="metric"><span>Open positions</span><strong id="position-count">—</strong></article><article class="metric"><span>Equity value</span><strong id="holding-total">—</strong><small>USD, source currency</small></article><article class="metric"><span>Cash total</span><strong id="holding-cash">—</strong><small>USD equivalent</small></article><article class="metric"><span>Largest position</span><strong id="largest-symbol">—</strong><small id="largest-weight"></small></article></div>
         <article class="panel"><div class="panel-head"><div><p class="eyebrow">POSITION DETAIL</p><h2>Each holding</h2></div></div><div class="table-wrap"><table><thead><tr><th>Broker</th><th>Symbol</th><th class="numeric">Shares</th><th class="numeric">Average cost</th><th id="holding-price-head" class="numeric">Last price</th><th class="numeric">Market value</th><th class="numeric">Unrealized P/L</th><th class="numeric">Weight</th></tr></thead><tbody id="holding-rows"></tbody></table></div></article>
         <p id="holdings-note" class="data-note">IBKR position detail above follows the selected period.</p>
         <article class="panel"><div class="panel-head"><div><p class="eyebrow">WEBULL</p><h2>Webull holdings</h2></div></div><div class="table-wrap"><table><thead><tr><th>Period</th><th>Symbol</th><th>Type</th><th class="numeric">Quantity</th><th class="numeric">Price USD</th><th class="numeric">Market value</th><th class="numeric">Cumulative open P/L</th></tr></thead><tbody id="webull-holding-rows"></tbody></table></div><p id="webull-holdings-note" class="panel-note"></p></article>
+        </div>
       </section>
 
       <section id="view-activity" class="view" hidden>
+        <div id="unified-activity"></div><div class="legacy-view" hidden>
         <div class="section-title"><div><p class="eyebrow">BROKERAGE RECORDS</p><h2>Trades & cash activity</h2></div><span id="activity-coverage" class="muted"></span></div>
         <div class="metrics three"><article class="metric"><span>Executions</span><strong id="trade-count">—</strong></article><article class="metric"><span>2026 dividends</span><strong id="dividend-value">—</strong><small>Approximate HKD</small></article><article class="metric"><span>2026 interest & tax</span><strong id="interest-tax-value">—</strong><small>Approximate HKD, net</small></article></div>
         <article class="panel"><div class="panel-head"><div><p class="eyebrow">BY MONTH</p><h2>IBKR activity schedule</h2></div></div><div class="table-wrap"><table><thead><tr><th>Month</th><th class="numeric">Trades</th><th class="numeric">Deposits HKD</th><th class="numeric">Withdrawals HKD</th><th class="numeric">Dividends USD</th><th class="numeric">Interest USD</th><th class="numeric">Tax USD</th><th class="numeric">Realized P/L USD</th></tr></thead><tbody id="month-rows"></tbody></table></div></article>
@@ -55,6 +62,7 @@
         <article class="panel"><div class="panel-head"><div><p class="eyebrow">EXECUTIONS</p><h2>IBKR trade history</h2></div><div class="filters"><select id="trade-asset" aria-label="Filter trade asset"><option value="">All assets</option><option value="STK">Stocks & ETFs</option><option value="CASH">FX</option></select><input id="trade-search" type="search" placeholder="Search symbol" aria-label="Search trades"></div></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Broker</th><th>Symbol</th><th>Side</th><th class="numeric">Quantity</th><th class="numeric">Price</th><th>Currency</th><th class="numeric">Fee</th><th class="numeric">Realized P/L</th></tr></thead><tbody id="trade-rows"></tbody></table></div><p id="trade-result" class="panel-note"></p></article>
         <article class="panel"><div class="panel-head"><div><p class="eyebrow">NON-TRADE CASH</p><h2>IBKR cash ledger</h2></div><div class="filters"><select id="cash-type" aria-label="Filter cash activity"><option value="">All types</option><option value="DEPOSIT">Deposits</option><option value="WITHDRAWAL">Withdrawals</option><option value="DIVIDEND">Dividends</option><option value="INTEREST">Interest</option><option value="TAX">Tax</option></select><input id="cash-search" type="search" placeholder="Search description" aria-label="Search cash ledger"></div></div><div class="table-wrap"><table><thead><tr><th>Report date</th><th>Type</th><th>Currency</th><th class="numeric">Amount</th><th>Symbol</th><th>Description</th><th>Settlement date</th></tr></thead><tbody id="cash-rows"></tbody></table></div><p id="cash-result" class="panel-note"></p></article>
         <p class="data-note">Cash Ledger excludes trade cash flows. Its report date can differ from settlement date. Deposits and withdrawals are financing flows, not investment P/L.</p>
+        </div>
       </section>
 
       <section id="view-watchlist" class="view" hidden>

@@ -124,9 +124,13 @@
       ibkrFunding:n(r[4]),webullFunding:n(r[5]),combinedFunding:n(r[6]),
       ibkrPL:n(r[7]),webullPL:n(r[8]),combinedPL:n(r[9]),check:n(r[10]),note:text(r[11])
     }));
+    const webullExecutions=rows(p[19]).slice(1).filter(r=>text(r[0])&&text(r[1])).map(r=>({
+      id:text(r[0]),date:text(r[1]),symbol:text(r[2]),side:text(r[3]),
+      quantity:n(r[4]),price:n(r[5]),currency:text(r[6]),amount:n(r[7]),status:text(r[8]),source:text(r[9])
+    }));
     return {
       positions, trades, cash, months, history, valuations,
-      webullMonthly,webullHoldings,webullCurrent,reconciliation,
+      webullMonthly,webullHoldings,webullCurrent,reconciliation,webullExecutions,
       fx: value(p[12]),
       metrics: {
         totalHKD: value(p[4]), equityHKD: value(p[5]), cashHKD: value(p[6]),

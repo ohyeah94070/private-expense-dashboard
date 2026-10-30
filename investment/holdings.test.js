@@ -1,0 +1,18 @@
+const assert=require("node:assert/strict");
+const fs=require("node:fs");
+const vm=require("node:vm");
+const elements=new Map();
+const document={getElementById(id){if(!elements.has(id))elements.set(id,{addEventListener(){},textContent:"",innerHTML:"",value:"current"});return elements.get(id)},querySelectorAll(){return []}};
+const context=vm.createContext({document,window:{},location:{hash:""},PortfolioModel:require("./model.js"),Intl,URLSearchParams,Date,Number,Math,setTimeout});
+vm.runInContext(fs.readFileSync(require.resolve("./app.js"),"utf8"),context);
+context.fixture={fx:7.8,metrics:{cashHKD:780},asOf:"2026-10-28",positions:[{broker:"IBKR",symbol:"QLD",shares:2,averageCost:100,lastPrice:110,marketValue:220,unrealized:20}],history:[{month:"2026-02",cashUSD:50,cashHKD:390,fx:7.8}],valuations:[{month:"2026-02",symbol:"QLD",shares:1,close:90,marketValue:90,costBasis:80,unrealized:10}]};
+vm.runInContext("data=fixture; renderHoldings()",context);
+assert.match(elements.get("holding-rows").innerHTML,/QLD/);
+assert.match(elements.get("holding-rows").innerHTML,/Cash/);
+assert.match(elements.get("holding-rows").innerHTML,/\$100\.00/);
+assert.equal(elements.get("holding-cash").textContent,"$100.00");
+elements.get("overview-period").value="2026-02";
+vm.runInContext("renderHoldings()",context);
+assert.match(elements.get("holding-rows").innerHTML,/\$90\.00/);
+assert.equal(elements.get("holding-cash").textContent,"$100.00");
+console.log("holdings stock and cash rows passed");

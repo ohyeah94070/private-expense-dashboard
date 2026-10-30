@@ -8,7 +8,8 @@ const PORTFOLIO_RANGES = [
   "'Dashboard'!G10", "'Dashboard'!I10", "'README'!B18",
   "'Monthly Summary'!A1:N100", "'Monthly Valuation'!A1:I100",
   "'Webull Monthly'!A1:R100", "'Webull Holdings'!A1:I200",
-  "'Webull Current'!A1:I50", "'Broker Reconciliation'!A1:L100"
+  "'Webull Current'!A1:I50", "'Broker Reconciliation'!A1:L100",
+  "'Webull Executions'!A1:J1000"
 ];
 const MARKET_RANGE = ["'Market Watch'!A1:H9"];
 const MARKET_ITEMS = [
@@ -31,10 +32,10 @@ document.querySelectorAll(".tab").forEach(b => b.addEventListener("click", () =>
 document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => showTab(b.dataset.go)));
 for(const id of ["trade-asset","trade-search"]) $(id).addEventListener(id.endsWith("search")?"input":"change", renderTrades);
 for(const id of ["cash-type","cash-search"]) $(id).addEventListener(id.endsWith("search")?"input":"change", renderCash);
-$("overview-period").addEventListener("change", render);
+$("overview-period").addEventListener("change", () => renderUnified());
 $("monthly-bars").addEventListener("click", event => {
   const card=event.target.closest("[data-month]");
-  if(card) { $("overview-period").value=card.dataset.month; render(); }
+  if(card) { $("overview-period").value=card.dataset.month; renderUnified(); }
 });
 function setError(message) { $("connect-error").textContent = message; }
 function connect() {
@@ -78,7 +79,7 @@ async function load() {
     $("refresh").hidden=false; $("disconnect").hidden=false;
     $("refresh").textContent="Refresh";
     $("sync-status").textContent="Refreshed "+new Intl.DateTimeFormat("en-GB",{timeZone:"Asia/Hong_Kong",hour:"2-digit",minute:"2-digit"}).format(new Date())+" HKT";
-    render();
+    renderUnified();
     try {
       const result=await batchGet(BROKERAGE_SHEET,MARKET_RANGE,accessToken);
       if(current!==epoch) return;

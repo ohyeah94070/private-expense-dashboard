@@ -1,0 +1,31 @@
+const assert=require("node:assert/strict");
+const path=require("node:path");
+const os=require("node:os");
+const {pathToFileURL}=require("node:url");
+const playwright=(()=>{try{return require("playwright")}catch{return require(path.join(os.homedir(),".cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright"))}})();
+const fixture=require("./unified.test.js");
+async function check(viewport){
+  const browser=await playwright.chromium.launch({headless:true,executablePath:process.env.CHROME_PATH||"C:/Program Files/Google/Chrome/Application/chrome.exe"});
+  const page=await browser.newPage({viewport});
+  const errors=[];page.on("pageerror",e=>errors.push(e.message));
+  await page.goto(pathToFileURL(path.join(__dirname,"index.html")).href,{waitUntil:"domcontentloaded"});
+  await page.waitForFunction(()=>typeof renderUnified==="function");
+  await page.evaluate(d=>{data=d;document.getElementById("setup").hidden=true;document.getElementById("app").hidden=false;renderUnified()},fixture);
+  assert.equal(await page.locator("#broker-filter").inputValue(),"ALL");
+  assert.match(await page.locator("#unified-holdings").innerText(),/MU/);
+  assert.match(await page.locator("#unified-activity").innerText(),/Webull/);
+  await page.locator("#broker-filter").selectOption("Webull");
+  assert.match(await page.locator("#unified-overview").innerText(),/Webull/);
+  await page.locator("#overview-period").selectOption("2026-01");
+  assert.match(await page.locator("#unified-overview").innerText(),/2,300|1,100/);
+  await page.locator("#broker-filter").selectOption("ALL");
+  await page.locator("#overview-period").selectOption("current");
+  await page.locator('[data-tab="activity"]').click();
+  await page.locator("#activity-symbol").fill("MU");
+  assert.match(await page.locator("#unified-activity").innerText(),/MU/);
+  assert.equal(errors.length,0,errors.join("; "));
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth+5);
+  assert.equal(overflow,false,`Unexpected page overflow at ${viewport.width}px`);
+  await browser.close();
+}
+(async()=>{await check({width:1280,height:800});await check({width:390,height:844});console.log("desktop and mobile UI passed")})().catch(e=>{console.error(e);process.exitCode=1});

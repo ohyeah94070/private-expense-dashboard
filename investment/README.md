@@ -1,5 +1,17 @@
 # Investment Review
 
+## Unified portfolio (2026-10-30)
+
+The active UI reads the existing private Sheet through Google OAuth with the `spreadsheets.readonly` scope. `model.js` parses source tabs, `unified.js` normalizes positions and activity and calculates broker-filtered monthly results, and `unified-app.js` renders Overview, Holdings and Trades & Cash. Watchlist remains on its separate best-effort quote request. The old broker-specific markup is hidden for compatibility and is not rendered.
+
+Source flow: IBKR snapshot, trade and cash rows; Webull OpenAPI current snapshot and filled executions; Webull official month-end statements; private Google Sheet; browser-side normalization and aggregation. `Webull Executions` stores only filled/partially filled API executions with unique execution IDs, source links and gross cash effects. It does not contain a Webull cash ledger, fees or realized profit. The daily Webull archive automation updates this tab and `Webull Current`; statement month-end tabs remain manually reconciled.
+
+Monthly portfolio P/L = current official month-end NAV − previous official month-end NAV − net portfolio funding. January starts from the official 2025-12-31 NAV of each broker. IBKR↔Webull transfers cancel when both legs appear in the two broker funding totals; June's linkage is still flagged for reconciliation. Monthly return is calculated as P/L / opening NAV only when net funding is zero. With nonzero funding, daily flow timing is unavailable, so return is `—` rather than an unsupported TWR or Modified Dietz estimate. Historical Webull cost basis and realized P/L are unavailable, so historical combined stock-level P/L is marked partial. Current IBKR and Webull snapshots may be from different dates, so their combined NAV is explicitly labeled indicative.
+
+Holdings use HKD for NAV and weights; row values remain in source currency, currently USD. Cross-broker consolidation requires matching asset type/currency and a verified identity mapping. QLD CUSIP 74347R206 is documented by [ProShares](https://www.proshares.com/globalassets/proshares/fact-sheet/prosharesfactsheetqld.pdf); MU CUSIP 595112103 is documented in [Micron investor filings](https://investors.micron.com/static-files/de4cc557-90c7-4927-9295-60440b0a8cba). Other same-symbol records remain separate until their identity is verified. Average cost uses total cost basis / total shares. Missing cost or FX remains missing.
+
+Run `node model.test.js`, `node unified.test.js`, `node market.test.js` and `node ui.test.js` to check parsing, aggregation, quote isolation, and desktop/mobile rendering. The UI test uses a synthetic fixture and local Chrome. Google OAuth sign-in and live Sheets refresh require a signed-in browser check after deployment.
+
 Read-only GitHub Pages investment dashboard. The browser signs in to the private Brokerage Portfolio Tracker Google Sheet; no broker credentials are embedded in the public website.
 
 ## Data sources
