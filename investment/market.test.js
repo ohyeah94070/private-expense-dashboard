@@ -36,7 +36,7 @@ assert.doesNotMatch(html,/market-updated/);
 assert.equal(vm.runInContext("MARKET_RANGE[0]",context),"'Market Watch'!A1:I50");
 const portfolio={valueRanges:Array.from({length:15},()=>({values:[]}))};
 portfolio.valueRanges[0].values=[["As-of date","Broker","Symbol","Shares","Currency","Average cost","Last price","Market value","Unrealized P/L"],["2026-10-28","IBKR","QLD",1,"USD",100,110,110,10]];
-portfolio.valueRanges[4].values=[[1000]];
+portfolio.valueRanges[3].values=[[1000]];
 context.fetch=async()=>++context.fetchCount===1?{ok:true,json:async()=>portfolio}:{ok:false,status:404};
 context.fetchCount=0;
 vm.runInContext("token='test'; renderUnified=()=>{}",context);
