@@ -33,7 +33,26 @@ function weightedFunding(d,month,filter,funding,brokerFunding){
  }
  return {weighted:funding/2,method:"Estimate · undated funding at mid-month"};
 }
-function monthly(d,filter="ALL"){const opening={IBKR:d.history.find(x=>x.month==="2026-01")?.openingNAV,Webull:d.webullMonthly.find(x=>x.month==="2025-12")?.nav};const pick=(r,a,b)=>filter==="IBKR"?r[a]:filter==="Webull"?r[b]:add([r[a],r[b]]);return d.reconciliation.map((r,i)=>{const nav=pick(r,"ibkrNAV","webullNAV"),funding=pick(r,"ibkrFunding","webullFunding"),prior=i?pick(d.reconciliation[i-1],"ibkrNAV","webullNAV"):filter==="IBKR"?opening.IBKR:filter==="Webull"?opening.Webull:add([opening.IBKR,opening.Webull]);const pl=ok(nav)&&ok(prior)&&ok(funding)?nav-prior-funding:NaN;const priorPL=pick(r,"ibkrPL","webullPL"),check=ok(pl)&&ok(priorPL)?pl-priorPL:NaN;const weight=weightedFunding(d,r.month,filter,funding,{ibkr:r.ibkrFunding,webull:r.webullFunding});const capital=prior+weight.weighted;return {month:r.month,ibkrNAV:r.ibkrNAV,webullNAV:r.webullNAV,nav,funding,pl,monthlyReturn:ok(pl)&&ok(capital)&&capital>0?pl/capital:NaN,returnMethod:weight.method,check,status:!ok(nav)||!ok(prior)||!ok(funding)?"Missing":!ok(check)||Math.abs(check)>0.1?"Reconciliation required":"Complete",note:r.note||""}})}
+function monthly(d,filter="ALL"){
+ const opening={IBKR:d.history.find(x=>x.month==="2026-01")?.openingNAV,Webull:d.webullMonthly.find(x=>x.month==="2025-12")?.nav};
+ const pick=(r,a,b)=>filter==="IBKR"?r[a]:filter==="Webull"?r[b]:add([r[a],r[b]]);
+ return d.reconciliation.map((r,i)=>{
+  const nav=pick(r,"ibkrNAV","webullNAV"),funding=pick(r,"ibkrFunding","webullFunding");
+  const prior=i?pick(d.reconciliation[i-1],"ibkrNAV","webullNAV"):filter==="IBKR"?opening.IBKR:filter==="Webull"?opening.Webull:add([opening.IBKR,opening.Webull]);
+  const pl=ok(nav)&&ok(prior)&&ok(funding)?nav-prior-funding:NaN;
+  const stored=pick(r,"ibkrPL","webullPL"),check=ok(pl)&&ok(stored)?pl-stored:NaN;
+  const officialIBKR=d.history.some(x=>x.month===r.month&&ok(x.officialNAV));
+  const officialWebull=d.webullMonthly.some(x=>x.month===r.month&&ok(x.nav));
+  const official=filter==="IBKR"?officialIBKR:filter==="Webull"?officialWebull:officialIBKR&&officialWebull;
+  const weight=weightedFunding(d,r.month,filter,funding,{ibkr:r.ibkrFunding,webull:r.webullFunding});
+  const capital=prior+weight.weighted;
+  const status=!ok(nav)||!ok(prior)||!ok(funding)?"Missing":!ok(check)||Math.abs(check)>0.1?"Reconciliation required":official?"Complete":"Preliminary";
+  return {month:r.month,ibkrNAV:r.ibkrNAV,webullNAV:r.webullNAV,nav,funding,pl,
+   monthlyReturn:ok(pl)&&ok(capital)&&capital>0?pl/capital:NaN,
+   returnMethod:status==="Preliminary"&&r.note?.startsWith("Preliminary")?"Estimate · funding subject to verification":weight.method,
+   check,status,note:r.note||""};
+ });
+}
 function monthlyStocks(d,month,filter="ALL"){
   const result=[],hi=d.history.findIndex(x=>x.month===month),h=d.history[hi],prior=d.history[hi-1];
   if(include("IBKR",filter)&&h){
@@ -67,6 +86,7 @@ function monthlyStocks(d,month,filter="ALL"){
 }
 function resultBreakdown(d,month,filter="ALL"){
   const official=monthly(d,filter).find(x=>x.month===month),stocks=monthlyStocks(d,month,filter);
+  if(official?.status==="Preliminary")return {month,total:official.pl,stocks:[],lines:[],knownStock:NaN,other:NaN,partial:true,check:official.check};
   const ih=d.history.find(x=>x.month===month),ia=(d.months||[]).find(x=>x.month===month),w=d.webullMonthly.find(x=>x.month===month);
   const lines=[];
   if(include("IBKR",filter)){
@@ -106,7 +126,23 @@ function auditMonth(d,month){
   };
   return {month,checks,sourceStatus:[checks.combinedNAV,checks.monthlyPL,checks.ibkrFunding,checks.webullFunding,checks.webullAssets].some(v=>!ok(v)||Math.abs(v)>1)?"Reconciliation required":"Complete",note:r.note||""};
 }
-function summary(d,period="current",filter="ALL"){const current=period==="current",h=d.history.find(x=>x.month===period),w=d.webullMonthly.find(x=>x.month===period),rows=monthly(d,filter),month=rows.find(x=>x.month===period),pick=(a,b)=>filter==="IBKR"?a:filter==="Webull"?b:add([a,b]);return {nav:pick(current?d.metrics.totalHKD:h?.totalHKD,current?d.webullCurrent.nav:w?.nav),equity:pick(current?d.metrics.equityHKD:h?.equityHKD,current?d.webullCurrent.market:ok(w?.stocks)&&ok(w?.funds)?w.stocks+w.funds:NaN),cash:pick(current?d.metrics.cashHKD:h?.cashTotalHKD,current?d.webullCurrent.cash:w?.cash),unrealized:pick(current?d.metrics.unrealizedHKD:h?.unrealizedHKD,current?d.webullCurrent.unrealized:NaN),realized:filter==="IBKR"?(current?d.metrics.realizedHKD:h?.realizedUSD*h?.fx):NaN,monthlyPL:month?.pl,ytdPL:add(rows.filter(x=>current||x.month<=period).map(x=>x.pl)),month,lastComplete:rows.filter(x=>x.status==="Complete").at(-1),latestMonth:rows.at(-1)?.month,status:current?"Partial":month?.status||"Missing",asOf:current?`IBKR ${d.asOf||"unknown"}; Webull ${d.webullCurrent.asOf||"unknown"}`:`${period} month end`}}
+function summary(d,period="current",filter="ALL"){
+ const current=period==="current",h=d.history.find(x=>x.month===period),w=d.webullMonthly.find(x=>x.month===period);
+ const rows=monthly(d,filter),month=rows.find(x=>x.month===period),latestResult=rows.filter(x=>ok(x.pl)).at(-1);
+ const pick=(a,b)=>filter==="IBKR"?a:filter==="Webull"?b:add([a,b]);
+ const preliminary=!current&&month?.status==="Preliminary";
+ return {
+  nav:current?pick(d.metrics.totalHKD,d.webullCurrent.nav):preliminary?month.nav:pick(h?.totalHKD,w?.nav),
+  equity:preliminary?NaN:pick(current?d.metrics.equityHKD:h?.equityHKD,current?d.webullCurrent.market:ok(w?.stocks)&&ok(w?.funds)?w.stocks+w.funds:NaN),
+  cash:preliminary?NaN:pick(current?d.metrics.cashHKD:h?.cashTotalHKD,current?d.webullCurrent.cash:w?.cash),
+  unrealized:preliminary?NaN:pick(current?d.metrics.unrealizedHKD:h?.unrealizedHKD,current?d.webullCurrent.unrealized:NaN),
+  realized:preliminary?NaN:filter==="IBKR"?(current?d.metrics.realizedHKD:h?.realizedUSD*h?.fx):NaN,
+  monthlyPL:month?.pl,ytdPL:add(rows.filter(x=>current||x.month<=period).map(x=>x.pl)),month,
+  lastComplete:rows.filter(x=>x.status==="Complete").at(-1),latestResult,latestMonth:rows.at(-1)?.month,
+  status:current?"Partial":month?.status||"Missing",
+  asOf:current?`IBKR ${d.asOf||"unknown"}; Webull ${d.webullCurrent.asOf||"unknown"}`:preliminary?`${period} · API observations, funding pending`:`${period} month end`
+ };
+}
 function activities(d,filter="ALL"){const out=[];if(include("IBKR",filter)){for(const t of d.trades)out.push({id:`IBKR:T:${t.id}`,broker:"IBKR",date:t.date,type:t.asset==="CASH"?"FX":t.side,symbol:t.symbol,description:t.asset==="CASH"?"FX trade":"Stock execution",quantity:t.quantity,price:t.price,currency:t.currency,amount:t.netCash,fee:t.commission,realizedPL:t.realized,source:"IBKR trade record",status:"Complete"});for(const c of d.cash)out.push({id:`IBKR:C:${c.id}`,broker:"IBKR",date:c.date,settlementDate:c.settlement,type:c.type==="TAX"?"WITHHOLDING_TAX":c.type,symbol:c.symbol,description:c.description,quantity:NaN,price:NaN,currency:c.currency,amount:c.amount,source:"IBKR cash ledger",status:"Complete"})}if(include("Webull",filter))for(const e of d.webullExecutions||[])out.push({id:`Webull:E:${e.id}`,broker:"Webull",date:e.date.slice(0,10),time:e.date,type:e.side,symbol:e.symbol,description:"Webull OpenAPI execution",quantity:e.quantity,price:e.price,currency:e.currency,amount:e.amount,source:e.source,status:"Partial"});const unique=new Map();for(const x of out)if(!unique.has(x.id))unique.set(x.id,x);return [...unique.values()].sort((a,b)=>(b.time||b.date).localeCompare(a.time||a.date))}
 return {positions,aggregatePositions,monthly,summary,activities,monthlyStocks,resultBreakdown,openPositions,auditMonth};
 });
