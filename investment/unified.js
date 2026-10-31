@@ -104,6 +104,39 @@ function resultBreakdown(d,month,filter="ALL"){
   const other=ok(official?.pl)?official.pl-knownStock-knownIncome:NaN;
   return {month,total:official?.pl,stocks,lines,knownStock,other,partial:stocks.some(x=>!ok(x.value))||lines.some(x=>!ok(x.value)),check:official?.check};
 }
+function latestPositionChanges(d,month,filter="ALL"){
+ const priorMonth=d.reconciliation.map(x=>x.month).filter(x=>x<month).at(-1);
+ if(!priorMonth)return {stocks:[],knownStock:NaN,partial:true,priorMonth:""};
+ const stocks=[];
+ const calculate=(broker,before,after,executions,currentFx,asOf)=>{
+  const asOfDate=String(asOf||"").slice(0,10);
+  if(asOfDate.slice(0,7)!==month)return;
+  const symbols=new Set([...before.map(x=>x.symbol),...after.map(x=>x.symbol),...executions.map(x=>x.symbol)]);
+  for(const symbol of symbols){
+   const start=before.filter(x=>x.symbol===symbol),end=after.filter(x=>x.symbol===symbol),tx=executions.filter(x=>x.symbol===symbol&&x.date.slice(0,10)<=asOfDate);
+   const openingShares=start.reduce((sum,x)=>sum+x.shares,0),closingShares=end.reduce((sum,x)=>sum+x.shares,0);
+   const tradedShares=tx.reduce((sum,x)=>sum+(x.side==="BUY"?x.quantity:x.side==="SELL"?-x.quantity:NaN),0);
+   const quantityCheck=ok(tradedShares)&&Math.abs(closingShares-openingShares-tradedShares)<0.0001;
+   const openingValue=add(start.map(x=>x.valueHKD)),closingValue=add(end.map(x=>x.valueHKD));
+   const cash=add(tx.map(x=>x.cash*hkdRate(x.currency,currentFx)));
+   const value=quantityCheck&&ok(openingValue)&&ok(closingValue)&&ok(cash)?closingValue-openingValue+cash:NaN;
+   stocks.push({broker,symbol,value,status:!quantityCheck?"Missing executions":!ok(value)?"Missing value / FX":"Estimated · snapshot",asOf:asOfDate,quantityCheck});
+  }
+ };
+ if(include("IBKR",filter)){
+  const prior=d.history.find(x=>x.month===priorMonth),before=d.valuations.filter(x=>x.month===priorMonth).map(x=>({symbol:x.symbol,shares:x.shares,valueHKD:x.marketValue*hkdRate("USD",prior?.fx)}));
+  const after=d.positions.filter(x=>x.shares>0).map(x=>({symbol:x.symbol,shares:x.shares,valueHKD:x.marketValue*hkdRate(x.currency||"USD",d.fx)}));
+  const executions=d.trades.filter(x=>x.asset==="STK"&&x.date.slice(0,7)===month).map(x=>({...x,cash:x.netCash}));
+  if(prior&&before.length)calculate("IBKR",before,after,executions,d.fx,d.positions[0]?.asOf);
+ }
+ if(include("Webull",filter)){
+  const prior=d.webullMonthly.find(x=>x.month===priorMonth),before=d.webullHoldings.filter(x=>x.month===priorMonth&&x.type==="STOCK").map(x=>({symbol:x.symbol,shares:x.shares,valueHKD:x.hkd}));
+  const after=d.webullCurrent.positions.filter(x=>x.type==="EQUITY"&&x.shares>0).map(x=>({symbol:x.symbol,shares:x.shares,valueHKD:x.marketValue*hkdRate(x.currency,d.fx)}));
+  const executions=[...new Map((d.webullExecutions||[]).filter(x=>x.date.slice(0,7)===month).map(x=>[x.id,x])).values()].map(x=>({...x,cash:x.amount}));
+  if(prior&&before.length)calculate("Webull",before,after,executions,d.fx,d.webullCurrent.asOf);
+ }
+ return {stocks,knownStock:stocks.some(x=>ok(x.value))?stocks.filter(x=>ok(x.value)).reduce((sum,x)=>sum+x.value,0):NaN,partial:stocks.some(x=>!ok(x.value)),priorMonth};
+}
 function openPositions(d,period="current",filter="ALL"){
   const current=period==="current",ih=d.history.find(x=>x.month===period),w=d.webullMonthly.find(x=>x.month===period);
   return aggregatePositions(positions(d,period,filter)).map(g=>{
@@ -144,5 +177,5 @@ function summary(d,period="current",filter="ALL"){
  };
 }
 function activities(d,filter="ALL"){const out=[];if(include("IBKR",filter)){for(const t of d.trades)out.push({id:`IBKR:T:${t.id}`,broker:"IBKR",date:t.date,type:t.asset==="CASH"?"FX":t.side,symbol:t.symbol,description:t.asset==="CASH"?"FX trade":"Stock execution",quantity:t.quantity,price:t.price,currency:t.currency,amount:t.netCash,fee:t.commission,realizedPL:t.realized,source:"IBKR trade record",status:"Complete"});for(const c of d.cash)out.push({id:`IBKR:C:${c.id}`,broker:"IBKR",date:c.date,settlementDate:c.settlement,type:c.type==="TAX"?"WITHHOLDING_TAX":c.type,symbol:c.symbol,description:c.description,quantity:NaN,price:NaN,currency:c.currency,amount:c.amount,source:"IBKR cash ledger",status:"Complete"})}if(include("Webull",filter))for(const e of d.webullExecutions||[])out.push({id:`Webull:E:${e.id}`,broker:"Webull",date:e.date.slice(0,10),time:e.date,type:e.side,symbol:e.symbol,description:"Webull OpenAPI execution",quantity:e.quantity,price:e.price,currency:e.currency,amount:e.amount,source:e.source,status:"Partial"});const unique=new Map();for(const x of out)if(!unique.has(x.id))unique.set(x.id,x);return [...unique.values()].sort((a,b)=>(b.time||b.date).localeCompare(a.time||a.date))}
-return {positions,aggregatePositions,monthly,summary,activities,monthlyStocks,resultBreakdown,openPositions,auditMonth};
+return {positions,aggregatePositions,monthly,summary,activities,monthlyStocks,resultBreakdown,latestPositionChanges,openPositions,auditMonth};
 });

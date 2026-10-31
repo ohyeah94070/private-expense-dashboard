@@ -54,5 +54,23 @@ assert.equal(U.summary(preview,"2026-03").monthlyPL,-100);
 assert.equal(U.summary(preview,"current").latestResult.month,"2026-03");
 const confirmed={...preview,history:[...preview.history,{month:"2026-03",totalHKD:1250,officialNAV:1250}],webullMonthly:[...preview.webullMonthly,{month:"2026-03",nav:1150}]};
 assert.equal(U.monthly(confirmed).at(-1).status,"Complete");
+const latest={...d,history:[...d.history,{month:"2026-09",fx:7.8}],reconciliation:[...d.reconciliation,{month:"2026-09"},{month:"2026-10"}],
+ valuations:[{month:"2026-09",symbol:"MU",shares:10,marketValue:100}],
+ positions:[{asOf:"2026-10-27",symbol:"MU",shares:12,currency:"USD",marketValue:132}],
+ trades:[{id:"I1",date:"2026-10-05",asset:"STK",side:"BUY",symbol:"MU",quantity:2,currency:"USD",netCash:-20}],
+ webullMonthly:[...d.webullMonthly,{month:"2026-09",fx:7.8}],
+ webullHoldings:[{month:"2026-09",type:"STOCK",symbol:"VOO",shares:5,hkd:390}],
+ webullCurrent:{...d.webullCurrent,asOf:"2026-10-29T15:00:00Z",positions:[{symbol:"VOO",type:"EQUITY",shares:5,currency:"USD",marketValue:55}]},webullExecutions:[]};
+const latestResult=U.latestPositionChanges(latest,"2026-10");
+assert.equal(latestResult.stocks.length,2);
+assert.ok(Math.abs(latestResult.stocks.find(x=>x.broker==="IBKR").value-93.6)<1e-8);
+assert.ok(Math.abs(latestResult.stocks.find(x=>x.broker==="Webull").value-39)<1e-8);
+assert.equal(U.latestPositionChanges(latest,"2026-10","Webull").stocks.length,1);
+assert.ok(Number.isNaN(U.latestPositionChanges({...latest,trades:[]},"2026-10","IBKR").stocks[0].value));
+const webullBuy={...latest,webullCurrent:{...latest.webullCurrent,positions:[{symbol:"VOO",type:"EQUITY",shares:7,currency:"USD",marketValue:77}]},webullExecutions:[
+ {id:"W1",date:"2026-10-10",symbol:"VOO",side:"BUY",quantity:2,currency:"USD",amount:-20},
+ {id:"W1",date:"2026-10-10",symbol:"VOO",side:"BUY",quantity:2,currency:"USD",amount:-20}
+]};
+assert.ok(Math.abs(U.latestPositionChanges(webullBuy,"2026-10","Webull").stocks[0].value-54.6)<1e-8);
 console.log("unified portfolio aggregation passed");
 module.exports=d;
