@@ -120,7 +120,7 @@ function latestPositionChanges(d,month,filter="ALL"){
    const openingValue=add(start.map(x=>x.valueHKD)),closingValue=add(end.map(x=>x.valueHKD));
    const cash=add(tx.map(x=>x.cash*hkdRate(x.currency,currentFx)));
    const value=quantityCheck&&ok(openingValue)&&ok(closingValue)&&ok(cash)?closingValue-openingValue+cash:NaN;
-   stocks.push({broker,symbol,value,status:!quantityCheck?"Missing executions":!ok(value)?"Missing value / FX":"Estimated · snapshot",asOf:asOfDate,quantityCheck});
+   stocks.push({broker,symbol,value,status:!quantityCheck?"Missing executions":!ok(value)?"Missing value / FX":`Calculated · ${broker} API`,asOf:asOfDate,quantityCheck});
   }
  };
  if(include("IBKR",filter)){

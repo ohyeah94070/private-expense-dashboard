@@ -23,6 +23,7 @@ async function check(viewport){
   assert.match(await page.locator("#unified-overview").innerText(),/Stock P\/L by position/);
   await page.locator("#broker-filter").selectOption("ALL");
   await page.locator("#overview-period").selectOption("current");
+  assert.match(await page.locator("#unified-overview .data-note").innerText(),/directly from its API/);
   await page.evaluate(()=>{data.metrics.unrealizedHKD+=5000;renderUnified()});
   assert.match(await page.locator("#unified-overview .data-note").innerText(),/do not reconcile yet/);
   await page.locator('[data-tab="activity"]').click();

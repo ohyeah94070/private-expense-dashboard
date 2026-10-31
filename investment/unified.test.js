@@ -64,6 +64,7 @@ const latest={...d,history:[...d.history,{month:"2026-09",fx:7.8}],reconciliatio
 const latestResult=U.latestPositionChanges(latest,"2026-10");
 assert.equal(latestResult.stocks.length,2);
 assert.ok(Math.abs(latestResult.stocks.find(x=>x.broker==="IBKR").value-93.6)<1e-8);
+assert.equal(latestResult.stocks.find(x=>x.broker==="IBKR").status,"Calculated · IBKR API");
 assert.ok(Math.abs(latestResult.stocks.find(x=>x.broker==="Webull").value-39)<1e-8);
 assert.equal(U.latestPositionChanges(latest,"2026-10","Webull").stocks.length,1);
 assert.ok(Number.isNaN(U.latestPositionChanges({...latest,trades:[]},"2026-10","IBKR").stocks[0].value));
