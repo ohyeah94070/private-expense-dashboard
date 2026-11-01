@@ -1,8 +1,7 @@
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
-const RANGES = ["Stmt!A1:AE65", "Budget!A1:J100", "'Income & Transfers'!A1:O300", "'Large exp.'!A1:C500"];
+const RANGES = ["Stmt!A:AE", "Budget!A:J", "'Income & Transfers'!A:O", "'Large exp.'!A:C"];
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
-const num = value => value === "" || value == null ? NaN : Number(value);
 const serialDate = n => new Date(Date.UTC(1899,11,30) + n * 86400000);
 const dateLabel = n => Number.isFinite(n) ? new Intl.DateTimeFormat("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"}).format(serialDate(n)) : "—";
 const monthKey = n => Number.isFinite(n) ? serialDate(n).toISOString().slice(0,7) : "";
@@ -110,13 +109,9 @@ async function loadData() {
 function extract(parsedPeriods = StatementModel.parse(raw.Stmt,dayNow)) {
   const oldEnd = periods[Number($("period").value)]?.end;
   periods = parsedPeriods.map(period => ({...period,label:dateLabel(period.end)}));
-  const b=raw.Budget||[];
-  budgetRows=b.slice(4,28).filter(row=>Number.isFinite(num(row[0]))).map(row=>({month:num(row[0]),income:num(row[1]),housing:num(row[2]),routine:num(row[3]),other:num(row[4]),events:num(row[5]),expenses:num(row[6]),surplus:num(row[7]),actual:num(row[8]),variance:num(row[9])}));
-  budgetPlans=b.slice(33).filter(row=>Number.isFinite(num(row[0]))&&String(row[1]||"").trim()).map(row=>({date:num(row[0]),event:String(row[1]||""),category:String(row[2]||"")||"Other",estimated:num(row[3]),paid:num(row[4]),remaining:num(row[5]),included:row[6]===true||String(row[6]).toUpperCase()==="TRUE",notes:String(row[7]||"")})).sort((a,b)=>a.date-b.date);
-  events=(raw["Large exp."]||[]).slice(1).filter(row=>Number.isFinite(num(row[0]))&&Number.isFinite(num(row[2]))).map(row=>({date:num(row[0]),description:String(row[1]||""),amount:num(row[2]),category:suggestCategory(String(row[1]||""))})).sort((a,b)=>b.date-a.date);
-  incomeEntries=(raw["Income & Transfers"]||[]).slice(1).filter(row=>Number.isFinite(num(row[0]))&&Number.isFinite(num(row[6]))&&String(row[3]||"").trim().startsWith("Income |")).map(row=>({
-    date:num(row[0]),description:String(row[1]||""),amount:num(row[6]),type:String(row[3]||"").split("|")[1]?.trim()||"Other",account:String(row[2]||"").split("|")[2]?.trim()||"Other"
-  })).sort((a,b)=>b.date-a.date);
+  ({budgetRows,budgetPlans}=SourceModel.budget(raw.Budget||[]));
+  events=SourceModel.expenses(raw["Large exp."]||[]).map(event=>({...event,category:suggestCategory(event.description)}));
+  incomeEntries=SourceModel.income(raw["Income & Transfers"]||[]);
   const selector=$("period");
   selector.innerHTML=periods.map((p,i)=>"<option value='"+i+"'>"+esc(p.label)+"</option>").join("");
   selector.value=String(Math.max(0,periods.findIndex(x=>x.end===oldEnd) >= 0 ? periods.findIndex(x=>x.end===oldEnd) : periods.length-1));
@@ -160,7 +155,7 @@ function renderOverview(p) {
   $("expense").textContent=fmt(p.expense);$("expense-caption").textContent=p.days+"-day reconciliation period";
   const assetGroups=totals(p.positions.filter(x=>x.type==="Asset"),x=>x.category);
   $("allocation-summary").innerHTML=barRows(assetGroups,p.assets,{colors:["","blue","gold","purple"]})+"<div class='summary-total'><span>Gross assets</span><strong>"+fmt(p.assets)+"</strong></div>";
-  const parts=[{label:"Large expenses",value:p.large},{label:"Housing",value:p.housing},{label:"Routine / unitemized",value:p.routine}].filter(x=>Number.isFinite(x.value));
+  const parts=[{label:"Large expenses",value:p.large},{label:"Housing",value:p.housing},{label:"Routine / residual",value:p.routine}].filter(x=>Number.isFinite(x.value));
   $("expense-summary").innerHTML=barRows(parts,Math.abs(p.expense),{colors:["coral","gold","slate"]})+"<div class='summary-total'><span>Reconciled expense</span><strong>"+fmt(p.expense)+"</strong></div>";
   $("period-chart").innerHTML=periods.map((x,i)=>"<button type='button' class='period-tile "+(x.end===p.end?"selected":"")+"' data-period='"+i+"'><b>"+esc(x.label)+"</b><span>"+x.days+" days · "+esc(dateLabel(x.start))+" start</span><strong>"+fmt(x.expense)+"</strong></button>").join("");
   $("period-chart").querySelectorAll("[data-period]").forEach(button=>button.addEventListener("click",()=>{ $("period").value=button.dataset.period;$("spend-window").value="period";renderAll(); }));
@@ -220,7 +215,7 @@ function renderSpending() {
   $("spend-net-change").textContent=fmt(p.navChange);$("spend-core-savings").textContent=fmt(p.savings);
   const incomeParts=[{label:"Salary",value:p.salary},{label:"Investment result",value:p.investment},{label:"MPF result",value:p.mpf},{label:"Other income",value:p.otherIncome}].filter(x=>Number.isFinite(x.value));
   $("income-components").innerHTML=barRows(incomeParts,Math.abs(p.income),{colors:["","blue","purple","gold"]})+"<div class='summary-total'><span>Statement income</span><strong>"+fmt(p.income)+"</strong></div>";
-  const parts=[{label:"Large expenses",value:p.large},{label:"Housing",value:p.housing},{label:"Routine / unitemized",value:p.routine}].filter(x=>Number.isFinite(x.value));
+  const parts=[{label:"Large expenses",value:p.large},{label:"Housing",value:p.housing},{label:"Routine / residual",value:p.routine}].filter(x=>Number.isFinite(x.value));
   $("spend-components").innerHTML=barRows(parts,Math.abs(p.expense),{colors:["coral","gold","slate"]})+"<div class='summary-total'><span>Total</span><strong>"+fmt(p.expense)+"</strong></div>";
   const receipts=visibleIncomeEntries(),incomeMode=$("income-group").value,incomeGrouped=new Map();
   receipts.forEach(e=>{const key=incomeMode==="account"?e.account:e.type;incomeGrouped.set(key,(incomeGrouped.get(key)||0)+e.amount);});

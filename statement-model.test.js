@@ -3,6 +3,7 @@ const StatementModel = require("./statement-model.js");
 
 const rows = Array.from({length:65},()=>[]);
 rows[0][5]=45000; rows[0][7]=45030; rows[0][9]=45030;
+rows[1]=["Cat 1","Cat 2","Cat 3","Cat 4","CCY","Ori. CCY Amt","HKD","Ori. CCY Amt","HKD","Ori. CCY Amt","HKD"];
 rows[2]=["Asset","Cash","Bank","","HKD"]; rows[2][6]=90; rows[2][8]=100;
 rows[3]=["Liabilities","Card","Bank","","HKD"]; rows[3][6]=-12; rows[3][8]=-10;
 rows[34]=["Balance Sheet Overview"];
@@ -30,4 +31,9 @@ assert.equal(period[0].positions.length,2,"liability rows must be included");
 assert.equal(period[0].positions[1].previous,-12);
 rows[35][8]=99;
 assert.throws(()=>StatementModel.parse(rows,45031),/do not reconcile/);
+rows[35][8]=100;
+rows.splice(10,0,[]);
+assert.equal(StatementModel.parse(rows,45031)[0].assets,100,"inserted rows must not shift totals");
+rows.unshift([]);
+assert.equal(StatementModel.parse(rows,45031)[0].assets,100,"a moved header must not shift balance dates");
 console.log("Statement row mapping and reconciliation passed");
