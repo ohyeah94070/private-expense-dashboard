@@ -38,9 +38,9 @@ Keep the existing flow: broker API or statements → private Google Drive and Go
 - Windows Task Scheduler `Investment IBKR Flex catch-up` runs daily at 10:15 local time and at Windows logon. A real task run succeeded after switching from an inaccessible local DPAPI file to the local Windows Credential Manager. It retries only missing closed months and treats IBKR error 1003 as pending, not a successful report. The Codex task at 10:45 reads its checkpoint and must not redownload the same month that day. The computer must run Windows for the task to execute; missed runs catch up at logon. A Flex token expires within one year and must then be renewed through IBKR.
 - `investment-month-end-preview`: monthly preliminary estimate; check its actual ACTIVE/PAUSED state. Official statements supersede estimates. Activate or alter only after source and idempotency checks.
 - `monthly-portfolio-social-cards`: separate report; leave it alone.
-- Expense GitHub Actions `daily-snapshot.yml` is not this investment update. Verify any investment encrypted backup separately; an old prompt does not prove a backup exists.
+- The public website reads private Sheet data only through Google OAuth. Its former encrypted website backups have been removed.
 - On failure, preserve source documents and verified rows. Record failed step, source date, and next action in `Workflow Status`. After months away, repeat this checklist and catch up in order, independent of chat memory.
 
 ## Security
 
-Use private Drive and Sheet for brokerage data. Keep website OAuth `spreadsheets.readonly`. Never commit credentials, recovery keys, raw exports, or financial totals to public GitHub. Read back every Sheet or schedule change.
+Use private Drive and Sheet for brokerage data. Keep website OAuth `spreadsheets.readonly`. Never commit credentials, raw exports, or financial totals to public GitHub. Read back every Sheet or schedule change.
