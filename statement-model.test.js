@@ -1,0 +1,33 @@
+const assert = require("node:assert/strict");
+const StatementModel = require("./statement-model.js");
+
+const rows = Array.from({length:65},()=>[]);
+rows[0][5]=45000; rows[0][7]=45030; rows[0][9]=45030;
+rows[2]=["Asset","Cash","Bank","","HKD"]; rows[2][6]=90; rows[2][8]=100;
+rows[3]=["Liabilities","Card","Bank","","HKD"]; rows[3][6]=-12; rows[3][8]=-10;
+rows[34]=["Balance Sheet Overview"];
+rows[35]=["Asset"]; rows[35][8]=100;
+rows[40]=["Liabilities"]; rows[40][8]=-10;
+rows[41]=["NAV"]; rows[41][7]=12; rows[41][8]=90;
+rows[45]=["Income"]; rows[45][8]=20;
+rows[47]=["","Salary"]; rows[47][8]=20;
+rows[48]=["","Investment"]; rows[48][8]=0;
+rows[49]=["","MPF"]; rows[49][8]=0;
+rows[50]=["","Other Income"]; rows[50][8]=0;
+rows[52]=["Expense"]; rows[52][8]=-8;
+rows[54]=["","Large"]; rows[54][8]=-2;
+rows[55]=["","Housing"]; rows[55][8]=-3;
+rows[56]=["","Routine"]; rows[56][8]=-3;
+rows[58]=["Net Income/(Loss)"]; rows[58][8]=12;
+
+const period = StatementModel.parse(rows,45031);
+assert.equal(period.length,1,"duplicate future dates must not become periods");
+assert.equal(period[0].assets,100);
+assert.equal(period[0].liabilities,-10);
+assert.equal(period[0].nav,90);
+assert.equal(period[0].savings,12);
+assert.equal(period[0].positions.length,2,"liability rows must be included");
+assert.equal(period[0].positions[1].previous,-12);
+rows[35][8]=99;
+assert.throws(()=>StatementModel.parse(rows,45031),/do not reconcile/);
+console.log("Statement row mapping and reconciliation passed");

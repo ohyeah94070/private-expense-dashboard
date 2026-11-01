@@ -1,9 +1,8 @@
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
-const RANGES = ["Stmt!A1:U54", "Budget!A1:J100", "'Income & Transfers'!A1:O300", "'Large exp.'!A1:C500"];
+const RANGES = ["Stmt!A1:AE65", "Budget!A1:J100", "'Income & Transfers'!A1:O300", "'Large exp.'!A1:C500"];
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
 const num = value => value === "" || value == null ? NaN : Number(value);
-const valueAt = (rows,r,c) => num(rows[r]?.[c]);
 const serialDate = n => new Date(Date.UTC(1899,11,30) + n * 86400000);
 const dateLabel = n => Number.isFinite(n) ? new Intl.DateTimeFormat("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"}).format(serialDate(n)) : "—";
 const monthKey = n => Number.isFinite(n) ? serialDate(n).toISOString().slice(0,7) : "";
@@ -97,30 +96,20 @@ async function loadData() {
     if (!response.ok) throw new Error(response.status===403 ? "This account cannot read the sheet, or Sheets API is not enabled." : "Sheet request failed ("+response.status+").");
     const data = await response.json();
     if (epoch !== loadEpoch) return;
-    raw = Object.fromEntries(data.valueRanges.map((item,i) => [RANGES[i].split("!")[0].replaceAll("'",""),item.values || []]));
-    extract();
+    const nextRaw = Object.fromEntries(data.valueRanges.map((item,i) => [RANGES[i].split("!")[0].replaceAll("'",""),item.values || []]));
+    const nextPeriods = StatementModel.parse(nextRaw.Stmt,dayNow);
+    if (!nextPeriods.length) throw new Error("No completed balance periods are available in Statement.");
+    raw = nextRaw;
+    extract(nextPeriods);
     $("setup").hidden = true; $("dashboard").hidden = false; $("refresh").hidden = false; error("");
+    $("sync-time").title = "";
     $("sync-time").textContent = "Updated " + new Intl.DateTimeFormat("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"Asia/Hong_Kong"}).format(new Date()) + " HKT";
     renderAll();
-  } catch(e) { if (epoch === loadEpoch) error(e.message || "Unable to load sheet data."); }
+  } catch(e) { if (epoch === loadEpoch) { const message=e.message || "Unable to load sheet data."; error(message); if (!$("dashboard").hidden) { $("sync-time").textContent="Refresh failed"; $("sync-time").title=message; } } }
 }
-function extract() {
-  const s = raw.Stmt || [], oldEnd = periods[Number($("period").value)]?.end;
-  periods = [];
-  for (let col=7;col<=19;col+=2) {
-    const end=valueAt(s,0,col), start=valueAt(s,0,col-2);
-    const hasBalance = s.slice(2,27).some(row => row[col] !== undefined && row[col] !== "");
-    if (!Number.isFinite(end) || end>dayNow || !hasBalance) continue;
-    const h=col+1;
-    const positions=s.slice(2,27).map((row,i) => ({
-      type:String(row[0]||""),category:String(row[1]||""),account:String(row[2]||""),holding:String(row[3]||""),ccy:String(row[4]||""),
-      original:num(row[col]),hkd:num(row[h]),previous:num(row[col-1]),sourceRow:i+3
-    })).filter(x=>x.type==="Asset" || x.type==="Liabilities");
-    periods.push({col,start,end,label:dateLabel(end),days:Math.round(end-start),positions,
-      assets:valueAt(s,30,h),liabilities:valueAt(s,35,h),nav:valueAt(s,36,h),navChange:valueAt(s,36,col),
-      expense:valueAt(s,47,h),large:valueAt(s,49,h),housing:valueAt(s,50,h),routine:valueAt(s,51,h),savings:valueAt(s,53,h),
-      income:valueAt(s,40,h),salary:valueAt(s,42,h),investment:valueAt(s,43,h),mpf:valueAt(s,44,h),otherIncome:valueAt(s,45,h)});
-  }
+function extract(parsedPeriods = StatementModel.parse(raw.Stmt,dayNow)) {
+  const oldEnd = periods[Number($("period").value)]?.end;
+  periods = parsedPeriods.map(period => ({...period,label:dateLabel(period.end)}));
   const b=raw.Budget||[];
   budgetRows=b.slice(4,28).filter(row=>Number.isFinite(num(row[0]))).map(row=>({month:num(row[0]),income:num(row[1]),housing:num(row[2]),routine:num(row[3]),other:num(row[4]),events:num(row[5]),expenses:num(row[6]),surplus:num(row[7]),actual:num(row[8]),variance:num(row[9])}));
   budgetPlans=b.slice(33).filter(row=>Number.isFinite(num(row[0]))&&String(row[1]||"").trim()).map(row=>({date:num(row[0]),event:String(row[1]||""),category:String(row[2]||"")||"Other",estimated:num(row[3]),paid:num(row[4]),remaining:num(row[5]),included:row[6]===true||String(row[6]).toUpperCase()==="TRUE",notes:String(row[7]||"")})).sort((a,b)=>a.date-b.date);
