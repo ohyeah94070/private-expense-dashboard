@@ -9,7 +9,7 @@ const PORTFOLIO_RANGES = [
   "'Monthly Summary'!A1:N100", "'Monthly Valuation'!A1:I100",
   "'Webull Monthly'!A1:S100", "'Webull Holdings'!A1:I200",
   "'Webull Current'!A1:I50", "'Broker Reconciliation'!A1:L100",
-  "'Webull Executions'!A1:J1000"
+  "'Webull Executions'!A1:J1000", "'Workflow Status'!A1:D40"
 ];
 const MARKET_RANGE = ["'Market Watch'!A1:I50"];
 const $ = id => document.getElementById(id);

@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const {parse,monthlyBreakdown,accountYTD,stockBreakdown,holdingsForPeriod,cashUSDForPeriod,parseMarket} = require("./model.js");
-const p = Array.from({length:18},()=>({values:[]}));
+const p = Array.from({length:20},()=>({values:[]}));
 p[0].values=[["As-of date","Broker","Symbol","Shares","Currency","Average cost","Last price","Market value","Unrealized P/L"],["2026-10-27","IBKR","QLD",326,"USD",63,88,28688,8000]];
 p[1].values=[["Trade date","Broker","Asset class","Symbol","Side","Quantity","Price","Currency","Commission","Net cash impact","Trade ID","Realized P/L"],["2026-06-08","IBKR","STK","QLD","SELL",100,90,"USD",1,8999,"T1",3000]];
 p[2].values=[["Report date","Broker","Type","Currency","Amount","Related symbol","Description","Transaction ID","Settlement date"],["2026-07-02","IBKR","WITHDRAWAL","HKD",-15000,"","Transfer","C1","2026-07-02"]];
@@ -11,6 +11,7 @@ p[14].values[2][18]="2026-01-20";
 p[15].values=[["Month"],["2026-01","STOCK","VOO","Vanguard",43,700,30100,"USD",235000]];
 p[16].values=[["Metric","Value"],["Snapshot UTC","2026-10-29T00:00:00Z"],["Account value",614354.68],["Market value",546959.99],["Cash",67394.69],["Cumulative unrealized P/L",105957.52],["API snapshot","https://drive.google.com/file/d/example/view"],[],["Symbol"],["VOO","EQUITY",43,"USD",436.64,707.91,30440.13,11662.37]];
 p[17].values=[["Month"],["2026-01",375010.79,631843.56,1006854.35,30000,0,30000,6412.59,10671.69,17084.28,0]];
+p[19].values=[["Item","Status"],["Last reconciled official month","2026-09"]];
 const result=parse({valueRanges:p});
 assert.equal(result.positions.length,1);
 assert.equal(result.trades[0].realized,3000);
@@ -24,6 +25,7 @@ assert.equal(result.webullMonthly[1].pl,10671.69);
 assert.equal(result.webullMonthly[1].withdrawalDate,"2026-01-20");
 assert.equal(result.webullCurrent.positions[0].unrealized,11662.37);
 assert.equal(result.reconciliation[0].check,0);
+assert.equal(result.officialThrough,"2026-09");
 const ytd=accountYTD({asOf:"2026-10-28",metrics:{totalHKD:604839.18},history:[{month:"2026-01",openingNAV:338598.1999599248}],months:[
   {month:"2026-01",deposits:30000,withdrawals:0},{month:"2026-06",deposits:40000,withdrawals:0},
   {month:"2026-07",deposits:0,withdrawals:-15000},{month:"2026-11",deposits:999999,withdrawals:0}

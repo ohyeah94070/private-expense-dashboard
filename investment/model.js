@@ -144,9 +144,10 @@
       id:text(r[0]),date:text(r[1]),symbol:text(r[2]),side:text(r[3]),
       quantity:n(r[4]),price:n(r[5]),currency:text(r[6]),amount:n(r[7]),status:text(r[8]),source:text(r[9])
     }));
+    const officialThrough=text(rows(p[19]).find(r=>text(r[0])==="Last reconciled official month")?.[1]);
     return {
       positions, trades, cash, months, history, valuations,
-      webullMonthly,webullHoldings,webullCurrent,reconciliation,webullExecutions,
+      webullMonthly,webullHoldings,webullCurrent,reconciliation,webullExecutions,officialThrough,
       fx: value(p[11]),
       metrics: {
         totalHKD: value(p[3]), equityHKD: value(p[4]), cashHKD: value(p[5]),
