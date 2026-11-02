@@ -20,12 +20,24 @@
     const known=changeUnrealized+realized+dividends+interest+tax;
     return {total:row.totalPL,endUnrealized:row.unrealizedHKD,changeUnrealized,realized,dividends,interest,tax,other:Number.isFinite(row.totalPL)&&Number.isFinite(known)?row.totalPL-known:NaN};
   }
-  function accountYTD(data) {
+  function accountYTD(data, monthlyRows) {
     const opening=data.history.find(x=>x.month==="2026-01")?.openingNAV;
     const closing=data.metrics.totalHKD;
-    const through=data.asOf.slice(0,7);
-    const funding=data.months.filter(x=>x.month.startsWith("2026-")&&x.month<=through).reduce((sum,x)=>sum+x.deposits+x.withdrawals,0);
-    return {opening,closing,funding,total:Number.isFinite(opening)&&Number.isFinite(closing)?closing-opening-funding:NaN};
+    const through=String(data.asOf||"").slice(0,7),count=/^2026-(0[1-9]|1[0-2])$/.test(through)?Number(through.slice(5)):0;
+    const expected=Array.from({length:count},(_,i)=>`2026-${String(i+1).padStart(2,"0")}`);
+    const rows=Array.isArray(monthlyRows)?monthlyRows.filter(x=>x.month>="2026-01"&&x.month<=through):[];
+    const covered=count>0&&rows.length===count&&expected.every((month,i)=>rows[i]?.month===month);
+    const complete=covered&&rows.every(x=>x.status==="Complete"&&Number.isFinite(x.funding));
+    if(!Array.isArray(data.months)||!complete||!Number.isFinite(opening)||!Number.isFinite(closing))
+      return {opening,closing,funding:NaN,total:NaN,status:covered?"Incomplete":"Missing"};
+    const recorded=rows.map(x=>{
+      const month=data.months.find(m=>m.month===x.month);
+      return month?month.deposits+month.withdrawals:0;
+    });
+    if(recorded.some((amount,i)=>!Number.isFinite(amount)||Math.abs(amount-rows[i].funding)>0.1))
+      return {opening,closing,funding:NaN,total:NaN,status:"Incomplete"};
+    const funding=recorded.reduce((sum,amount)=>sum+amount,0);
+    return {opening,closing,funding,total:closing-opening-funding,status:"Complete"};
   }
   function stockBreakdown(data, period) {
     const current=period==="current";
@@ -145,9 +157,13 @@
       quantity:n(r[4]),price:n(r[5]),currency:text(r[6]),amount:n(r[7]),status:text(r[8]),source:text(r[9])
     }));
     const officialThrough=text(rows(p[19]).find(r=>text(r[0])==="Last reconciled official month")?.[1]);
+    const fundingDetail=p[20]?rows(p[20]).slice(1).filter(r=>/^\d{4}-\d{2}$/.test(text(r[0]))).map(r=>({
+      month:text(r[0]),date:text(r[1]),broker:text(r[2]),type:text(r[3]),
+      amount:n(r[4]),source:text(r[7]),id:text(r[8]),treatment:text(r[10])
+    })):null;
     return {
       positions, trades, cash, months, history, valuations,
-      webullMonthly,webullHoldings,webullCurrent,reconciliation,webullExecutions,officialThrough,
+      webullMonthly,webullHoldings,webullCurrent,reconciliation,webullExecutions,officialThrough,fundingDetail,
       fx: value(p[11]),
       metrics: {
         totalHKD: value(p[3]), equityHKD: value(p[4]), cashHKD: value(p[5]),

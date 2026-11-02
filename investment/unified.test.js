@@ -10,8 +10,9 @@ assert.equal(g.find(x=>x.symbol==="AAPL").parts.length,1);assert.equal(g.find(x=
 assert.equal(U.summary(d,"current").cash,640);assert.equal(U.summary(d,"current","IBKR").cash,240);assert.equal(U.summary(d,"current","Webull").cash,400);
 assert.equal(U.summary(d,"current").nav,3800);
 assert.equal(U.summary(d,"current").ytdPL,500);
+assert.equal(U.summary(d,"current").ytdStatus,"Incomplete");
 assert.equal(U.monthly(d)[0].nav,2300);assert.equal(U.monthly(d)[0].pl,300);assert.equal(U.monthly(d)[0].monthlyReturn,0.15);
-assert.equal(U.monthly(d)[1].funding,0);assert.equal(U.monthly(d)[1].pl,200);assert.equal(U.monthly(d)[1].status,"Preliminary");
+assert.ok(Number.isNaN(U.monthly(d)[1].funding));assert.equal(U.monthly(d)[1].pl,200);assert.equal(U.monthly(d)[1].status,"Incomplete");
 assert.ok(Math.abs(U.monthly(d,"IBKR")[1].monthlyReturn-50/1225)<1e-10);
 assert.match(U.monthly(d,"IBKR")[1].returnMethod,/Estimate/);
 const dated={...d,cash:[...d.cash,{id:"D1",date:"2026-02-23",type:"DEPOSIT",currency:"HKD",amount:50}]};
@@ -38,7 +39,7 @@ assert.equal(stockRows.find(x=>x.symbol==="VOO").value,0);
 assert.equal(stockRows.find(x=>x.symbol==="QLD").value,78);
 assert.equal(U.monthlyStocks(stockData,"2026-01","Webull")[0].value,78);
 assert.ok(Number.isNaN(U.openPositions(stockData,"2026-02","Webull")[0].combinedOpenHKD));
-assert.equal(U.resultBreakdown(stockData,"2026-02","Webull").knownStock,78);
+assert.equal(U.resultBreakdown(stockData,"2026-02","Webull").partial,true);
 const missingFills={...stockData,webullExecutions:[]};
 assert.ok(Number.isNaN(U.monthlyStocks(missingFills,"2026-02","Webull")[0].value));
 assert.equal(U.resultBreakdown(missingFills,"2026-02","Webull").partial,true);
@@ -54,7 +55,7 @@ assert.equal(U.summary(preview,"2026-03").nav,2400);
 assert.equal(U.summary(preview,"2026-03").monthlyPL,-100);
 assert.equal(U.summary(preview,"current").latestResult.month,"2026-03");
 const confirmed={...preview,officialThrough:"2026-03",reconciliation:[...d.reconciliation,{...preview.reconciliation.at(-1),note:""}],history:[...preview.history,{month:"2026-03",totalHKD:1250,officialNAV:1250}],webullMonthly:[...preview.webullMonthly,{month:"2026-03",nav:1150}]};
-assert.equal(U.monthly(confirmed).at(-1).status,"Complete");
+assert.equal(U.monthly(confirmed).at(-1).status,"Incomplete");
 assert.equal(U.monthly({...confirmed,officialThrough:"2026-02"}).at(-1).status,"Preliminary");
 const latest={...d,history:[...d.history,{month:"2026-09",fx:7.8}],reconciliation:[...d.reconciliation,{month:"2026-09"},{month:"2026-10"}],
  valuations:[{month:"2026-09",symbol:"MU",shares:10,marketValue:100}],

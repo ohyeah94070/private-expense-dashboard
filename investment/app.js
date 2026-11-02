@@ -9,7 +9,8 @@ const PORTFOLIO_RANGES = [
   "'Monthly Summary'!A1:N100", "'Monthly Valuation'!A1:I100",
   "'Webull Monthly'!A1:S100", "'Webull Holdings'!A1:I200",
   "'Webull Current'!A1:I50", "'Broker Reconciliation'!A1:L100",
-  "'Webull Executions'!A1:J1000", "'Workflow Status'!A1:D40"
+  "'Webull Executions'!A1:J1000", "'Workflow Status'!A1:D40",
+  "'Funding Detail'!A1:K30"
 ];
 const MARKET_RANGE = ["'Market Watch'!A1:I50"];
 const $ = id => document.getElementById(id);
@@ -115,7 +116,7 @@ function render() {
   selector.innerHTML='<option value="current">Current position + 2026 activity</option>'+data.history.map(x=>`<option value="${esc(x.month)}">${esc(x.month)}</option>`).join("");
   selector.value=[...selector.options].some(x=>x.value===prior)?prior:"current";
   const selected=data.history.find(x=>x.month===selector.value),fx=selected?.fx??data.fx;
-  const ytd=PortfolioModel.accountYTD(data);
+  const ytd=PortfolioModel.accountYTD(data,UnifiedPortfolio.monthly(data,"IBKR"));
   $("hero-subtitle").textContent=selected?`${selected.month} month end · official IBKR account value; shares and cash reconstructed`:`IBKR positions ${data.asOf || "—"} · Webull API ${data.webullCurrent.asOf.slice(0,10)||"—"}`;
   $("total-value").textContent=selected?money(selected.totalHKD):money(data.metrics.totalHKD);
   $("equity-value").textContent=selected?money(selected.equityHKD):money(data.metrics.equityHKD);
@@ -174,7 +175,7 @@ function renderPnL() {
   const period=$("overview-period").value;
   let items,note,total,balance="",context="";
   if(period==="current") {
-    const ytd=PortfolioModel.accountYTD(data);
+    const ytd=PortfolioModel.accountYTD(data,UnifiedPortfolio.monthly(data,"IBKR"));
     items=[["Latest account value",ytd.closing],["Opening NAV · 31 Dec 2025",-ytd.opening],["Net funding · 2026",-ytd.funding]];
     total=ytd.total;
     const components=[["Realized stock P/L · 2026",m.realizedHKD],["Open stock P/L · cumulative",m.unrealizedHKD],["Dividends · 2026",m.dividendsHKD],["Interest · 2026",m.interestHKD],["Withholding tax · 2026",m.taxHKD]];

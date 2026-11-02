@@ -33,25 +33,73 @@ function weightedFunding(d,month,filter,funding,brokerFunding){
  }
  return {weighted:funding/2,method:"Estimate · undated funding at mid-month"};
 }
+function previousMonth(month){
+ if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))return "";
+ const [year,number]=month.split("-").map(Number);
+ return new Date(Date.UTC(year,number-2,1)).toISOString().slice(0,7);
+}
+function monthlySourceCheck(d,r,priorRow){
+ const prev=previousMonth(r.month),first=r.month==="2026-01";
+ if(!prev||(!first&&priorRow?.month!==prev))return "Missing consecutive month";
+ const h=d.history.find(x=>x.month===r.month),before=d.history.find(x=>x.month===prev);
+ const w=d.webullMonthly.find(x=>x.month===r.month),wb=d.webullMonthly.find(x=>x.month===prev);
+ const openingIBKR=first?h?.openingNAV:before?.officialNAV;
+ if(!ok(openingIBKR)||!ok(wb?.nav)||!/^Official statement$/i.test(wb.statement||"")||
+    !ok(h?.officialNAV)||!ok(w?.nav)||!/^Official statement$/i.test(w.statement||"")||
+    !ok(r.ibkrNAV)||!ok(r.webullNAV)||Math.abs(r.ibkrNAV-h.officialNAV)>0.1||Math.abs(r.webullNAV-w.nav)>0.1||
+    (first&&Math.abs(openingIBKR-(h?.openingNAV??NaN))>0.1))return "Missing official opening or closing NAV";
+ if(!ok(h.netFundingHKD)||!ok(w.deposits)||!ok(w.withdrawals)||!ok(w.funding)||
+    !ok(r.ibkrFunding)||!ok(r.webullFunding)||
+    Math.abs(h.netFundingHKD-r.ibkrFunding)>0.1||
+    Math.abs(w.deposits+w.withdrawals-w.funding)>0.1||Math.abs(w.funding-r.webullFunding)>0.1)
+   return "Missing or unmatched official funding";
+ if(!Array.isArray(d.fundingDetail))return "Missing funding detail coverage";
+ const details=d.fundingDetail.filter(x=>x.month===r.month);
+ if(details.some(x=>!(["IBKR","Webull"].includes(x.broker)&&["DEPOSIT","WITHDRAWAL"].includes(x.type)&&
+    /^\d{4}-\d{2}-\d{2}$/.test(x.date)&&x.date.slice(0,7)===r.month&&ok(x.amount)&&
+    (x.type==="DEPOSIT"?x.amount>0:x.amount<0)&&x.source&&x.id&&
+    /^Recorded broker (cash flow|withdrawal)|^Verified external/i.test(x.treatment))))return "Unclassified or unsupported funding detail";
+ if(new Set(details.map(x=>`${x.broker}:${x.id}`)).size!==details.length)return "Duplicate funding record ID";
+ const total=broker=>details.filter(x=>x.broker===broker).reduce((sum,x)=>sum+x.amount,0);
+ if(Math.abs(total("IBKR")-r.ibkrFunding)>0.1||Math.abs(total("Webull")-r.webullFunding)>0.1)
+   return "Missing funding detail";
+ const ledger=d.cash.filter(x=>x.date?.slice(0,7)===r.month&&["DEPOSIT","WITHDRAWAL"].includes(x.type));
+ if(ledger.some(x=>x.currency!=="HKD"||!ok(x.amount)||!x.id||
+    !details.some(y=>y.broker==="IBKR"&&y.id===x.id&&y.date===x.date&&y.type===x.type&&Math.abs(y.amount-x.amount)<0.1))||
+    details.filter(x=>x.broker==="IBKR").some(x=>!ledger.some(y=>y.id===x.id)))
+   return "IBKR ledger and funding detail differ";
+ if(d.cash.some(x=>x.date?.slice(0,7)===r.month&&/UNKNOWN|UNCLASSIFIED|TRANSFER/i.test(x.type||"")))
+   return "Unclassified cash activity";
+ if(!ok(h.totalPL)||!ok(w.pl)||!ok(r.ibkrPL)||!ok(r.webullPL)||
+    Math.abs(r.ibkrNAV-openingIBKR-r.ibkrFunding-r.ibkrPL)>0.1||
+    Math.abs(r.webullNAV-wb.nav-r.webullFunding-r.webullPL)>0.1||
+    Math.abs(h.totalPL-r.ibkrPL)>0.1||Math.abs(w.pl-r.webullPL)>0.1)
+   return "Broker P/L reconciliation failed";
+ if(r.ibkrFunding!==0&&r.webullFunding!==0&&Math.abs(r.ibkrFunding+r.webullFunding)<0.1&&
+    !details.every(x=>/^Verified external/i.test(x.treatment)))return "Transfer linkage unverified";
+ if(/assumed|unverified|unknown|missing|partial|preliminary/i.test(r.note||""))return "Funding or source unverified";
+ if(!ok(r.check)||Math.abs(r.check)>0.1)return "Reconciliation check failed";
+ return "";
+}
 function monthly(d,filter="ALL"){
  const opening={IBKR:d.history.find(x=>x.month==="2026-01")?.openingNAV,Webull:d.webullMonthly.find(x=>x.month==="2025-12")?.nav};
  const pick=(r,a,b)=>filter==="IBKR"?r[a]:filter==="Webull"?r[b]:add([r[a],r[b]]);
  return d.reconciliation.map((r,i)=>{
   const nav=pick(r,"ibkrNAV","webullNAV"),funding=pick(r,"ibkrFunding","webullFunding");
-  const prior=i?pick(d.reconciliation[i-1],"ibkrNAV","webullNAV"):filter==="IBKR"?opening.IBKR:filter==="Webull"?opening.Webull:add([opening.IBKR,opening.Webull]);
+  const priorRow=i?d.reconciliation[i-1]:null;
+  const prior=i?pick(priorRow,"ibkrNAV","webullNAV"):filter==="IBKR"?opening.IBKR:filter==="Webull"?opening.Webull:add([opening.IBKR,opening.Webull]);
   const pl=ok(nav)&&ok(prior)&&ok(funding)?nav-prior-funding:NaN;
   const stored=pick(r,"ibkrPL","webullPL"),check=ok(pl)&&ok(stored)?pl-stored:NaN;
-  const officialIBKR=d.history.some(x=>x.month===r.month&&ok(x.officialNAV));
-  const officialWebull=d.webullMonthly.some(x=>x.month===r.month&&ok(x.nav));
-  const sourcePresent=filter==="IBKR"?officialIBKR:filter==="Webull"?officialWebull:officialIBKR&&officialWebull;
-  const official=sourcePresent&&/^\d{4}-(0[1-9]|1[0-2])$/.test(d.officialThrough||"")&&r.month<=d.officialThrough&&!r.note?.startsWith("Preliminary");
+  const signedOff=/^\d{4}-(0[1-9]|1[0-2])$/.test(d.officialThrough||"")&&r.month<=d.officialThrough;
+  const sourceIssue=monthlySourceCheck(d,r,priorRow);
   const weight=weightedFunding(d,r.month,filter,funding,{ibkr:r.ibkrFunding,webull:r.webullFunding});
   const capital=prior+weight.weighted;
-  const status=!ok(nav)||!ok(prior)||!ok(funding)?"Missing":!ok(check)||Math.abs(check)>0.1?"Reconciliation required":official?"Complete":"Preliminary";
-  return {month:r.month,ibkrNAV:r.ibkrNAV,webullNAV:r.webullNAV,nav,funding,pl,
+  const status=!ok(nav)||!ok(prior)||!ok(funding)?"Missing":!ok(check)||Math.abs(check)>0.1?"Reconciliation required":!signedOff?"Preliminary":sourceIssue?"Incomplete":"Complete";
+  const fundingVerified=signedOff&&!sourceIssue;
+  return {month:r.month,ibkrNAV:r.ibkrNAV,webullNAV:r.webullNAV,nav,funding:fundingVerified?funding:NaN,pl,
    monthlyReturn:ok(pl)&&ok(capital)&&capital>0?pl/capital:NaN,
-   returnMethod:status==="Preliminary"&&r.note?.startsWith("Preliminary")?"Estimate · funding subject to verification":weight.method,
-   check,status,note:r.note||""};
+   returnMethod:!fundingVerified?`Estimate · ${weight.method==="Modified Dietz · dated broker flows"?"Modified Dietz using dated flows; ":""}funding subject to verification`:weight.method,
+   check,status,note:[r.note,sourceIssue].filter(Boolean).join(" · ")};
  });
 }
 function monthlyStocks(d,month,filter="ALL"){
@@ -161,9 +209,25 @@ function auditMonth(d,month){
   const monthlyStatus=monthly(d,"ALL").find(x=>x.month===month)?.status;
   return {month,checks,sourceStatus:monthlyStatus!=="Complete"?monthlyStatus:[checks.combinedNAV,checks.monthlyPL,checks.ibkrFunding,checks.webullFunding,checks.webullAssets].some(v=>!ok(v)||Math.abs(v)>1)?"Reconciliation required":"Complete",note:r.note||""};
 }
+function ytdResult(rows,through){
+ if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(through||"")||!through.startsWith("2026-"))
+   return {value:NaN,status:"Missing",note:"Missing YTD month"};
+ const count=Number(through.slice(5)),selected=rows.filter(x=>x.month>="2026-01"&&x.month<=through);
+ const expected=Array.from({length:count},(_,i)=>`2026-${String(i+1).padStart(2,"0")}`);
+ if(selected.length!==expected.length||expected.some((month,i)=>selected[i]?.month!==month))
+   return {value:NaN,status:"Missing",note:"Missing or duplicate YTD month"};
+ const value=add(selected.map(x=>x.pl));
+ if(!ok(value))return {value:NaN,status:"Missing",note:"Missing monthly P/L"};
+ const uncertain=selected.filter(x=>x.status!=="Complete");
+ if(!uncertain.length)return {value,status:"Complete",note:"All YTD months complete"};
+ const preliminary=uncertain.every(x=>x.status==="Preliminary");
+ return {value,status:preliminary?"Preliminary":"Incomplete",
+   note:`Estimate · ${uncertain.map(x=>`${x.month} ${x.status}`).join(", ")}`};
+}
 function summary(d,period="current",filter="ALL"){
  const current=period==="current",h=d.history.find(x=>x.month===period),w=d.webullMonthly.find(x=>x.month===period);
  const rows=monthly(d,filter),month=rows.find(x=>x.month===period),latestResult=rows.filter(x=>ok(x.pl)).at(-1);
+ const through=current?rows.at(-1)?.month:period,ytd=ytdResult(rows,through);
  const pick=(a,b)=>filter==="IBKR"?a:filter==="Webull"?b:add([a,b]);
  const pending=!current&&month?.status!=="Complete";
  return {
@@ -172,7 +236,7 @@ function summary(d,period="current",filter="ALL"){
   cash:pending?NaN:pick(current?d.metrics.cashHKD:h?.cashTotalHKD,current?d.webullCurrent.cash:w?.cash),
   unrealized:pending?NaN:pick(current?d.metrics.unrealizedHKD:h?.unrealizedHKD,current?d.webullCurrent.unrealized:NaN),
   realized:pending?NaN:filter==="IBKR"?(current?d.metrics.realizedHKD:h?.realizedUSD*h?.fx):NaN,
-  monthlyPL:month?.pl,ytdPL:add(rows.filter(x=>current||x.month<=period).map(x=>x.pl)),month,
+  monthlyPL:month?.pl,ytdPL:ytd.value,ytdStatus:ytd.status,ytdNote:ytd.note,month,
   lastComplete:rows.filter(x=>x.status==="Complete").at(-1),latestResult,latestMonth:rows.at(-1)?.month,
   status:current?"Partial":month?.status||"Missing",
   asOf:current?`IBKR ${d.asOf||"unknown"}; Webull ${d.webullCurrent.asOf||"unknown"}`:pending?`${period} · reconciliation pending`:`${period} month end`
