@@ -24,9 +24,9 @@ async function check(viewport){
   await page.locator("#broker-filter").selectOption("ALL");
   await page.locator("#overview-period").selectOption("current");
   assert.match(await page.locator("#unified-overview .overview-metrics .metric:nth-child(6) span").innerText(),/Incomplete/);
-  assert.match(await page.locator("#unified-overview .data-note").innerText(),/directly from its API/);
+  assert.match(await page.locator("#unified-overview .data-note").innerText(),/NAV, cash, shares and market values come from its API/);
   await page.evaluate(()=>{data.metrics.unrealizedHKD+=5000;renderUnified()});
-  assert.match(await page.locator("#unified-overview .data-note").innerText(),/do not reconcile yet/);
+  assert.match(await page.locator("#unified-overview .data-note").innerText(),/API account open P\/L is excluded/);
   await page.locator('[data-tab="activity"]').click();
   await page.locator("#activity-symbol").fill("MU");
   assert.match(await page.locator("#unified-activity").innerText(),/MU/);

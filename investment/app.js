@@ -2,7 +2,7 @@ const BROKERAGE_SHEET = "17026aWw5dDT3-bh9i_W8VMkIzW8K0EQYiWeIUtICYA0";
 const GOOGLE_CLIENT_ID = "110894641783-ranndo8u0vmmbq0c59g2vehma2vla4g6.apps.googleusercontent.com";
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
 const PORTFOLIO_RANGES = [
-  "'Positions'!A4:I1000", "'Trades'!A4:L1000", "'Cash Ledger'!A4:I1000",
+  "'Positions'!A4:K1000", "'Trades'!A4:L1000", "'Cash Ledger'!A4:I1000",
   "IBKR_ACCOUNT_VALUE_HKD", "IBKR_EQUITY_HKD",
   "IBKR_CASH_HKD", "IBKR_OPEN_PL_HKD", "IBKR_REALIZED_PL_HKD", "IBKR_DIVIDENDS_HKD",
   "IBKR_INTEREST_HKD", "IBKR_TAX_HKD", "PORTFOLIO_USDHKD_RATE",

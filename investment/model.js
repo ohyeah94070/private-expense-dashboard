@@ -87,11 +87,14 @@
   }
   function parse(portfolio) {
     const p = portfolio.valueRanges || [];
-    const positions = rows(p[0]).slice(1).filter(r => text(r[2])).map(r => ({
-      asOf: text(r[0]), broker: text(r[1]), symbol: text(r[2]), shares: n(r[3]),
-      currency: text(r[4]), averageCost: n(r[5]), lastPrice: n(r[6]),
-      marketValue: n(r[7]), unrealized: n(r[8])
-    }));
+    const positions = rows(p[0]).slice(1).filter(r => text(r[2])).map(r => {
+      const costStatus=text(r[9])||"Pending", anchorDate=text(r[10]);
+      const calculated=costStatus==="Calculated"&&/^\d{4}-\d{2}-\d{2}$/.test(anchorDate);
+      return {asOf:text(r[0]),broker:text(r[1]),symbol:text(r[2]),shares:n(r[3]),
+        currency:text(r[4]),averageCost:calculated?n(r[5]):NaN,
+        anchorAverageCost:n(r[5]),costStatus,anchorDate,lastPrice:n(r[6]),
+        marketValue:n(r[7]),unrealized:calculated?n(r[8]):NaN};
+    });
     const trades = rows(p[1]).slice(1).filter(r => text(r[0]) && text(r[10])).map(r => ({
       date: text(r[0]), broker: text(r[1]), asset: text(r[2]), symbol: text(r[3]),
       side: text(r[4]), quantity: n(r[5]), price: n(r[6]), currency: text(r[7]),
@@ -167,7 +170,8 @@
       fx: value(p[11]),
       metrics: {
         totalHKD: value(p[3]), equityHKD: value(p[4]), cashHKD: value(p[5]),
-        unrealizedHKD: value(p[6]), realizedHKD: value(p[7]),
+        unrealizedHKD: positions.length&&positions.every(x=>x.costStatus==="Calculated"&&Number.isFinite(x.unrealized))&&Number.isFinite(value(p[11]))
+          ?positions.reduce((sum,x)=>sum+x.unrealized,0)*value(p[11]):NaN, realizedHKD: value(p[7]),
         dividendsHKD: value(p[8]), interestHKD: value(p[9]), taxHKD: value(p[10])
       },
       asOf: positions[0]?.asOf || "",
