@@ -25,3 +25,9 @@ The Statement's routine spending is a reconciliation residual inferred from bala
 The browser requests `https://www.googleapis.com/auth/spreadsheets.readonly` using Google Identity Services, then calls the Google Sheets API directly. The public OAuth Client ID and private Sheet ID are configured in `app.js`, so the connection needs one click. The access token is kept in memory and is not committed. A new page load requires a fresh token. Only Google accounts with access to the private sheet can read its contents.
 
 GitHub Pages serves public frontend code. A client-side PIN would not protect the financial data and is not included.
+
+## Deployment status
+
+**Deployed — Manual Login Acceptance Pending (2026-11-04).** GitHub Pages successfully published the Finance Review repair from commit `8436bf5`. The live site serves the new scripts and the one-click connection form. Browser automation could open the Google account chooser but could not complete account selection, so authenticated page acceptance remains manual.
+
+To finish acceptance, open https://ohyeah94070.github.io/private-expense-dashboard/ in your own browser, refresh, click **Connect Google Account**, and choose the Google account that can read the Finance Sheet. Confirm that Overview, Assets & liabilities, Income & spending, and Budget planner load without the former missing-header error. Check seven Statement periods, 60 Budget months, five one-off plans, 30 large expenses, the `Taiwan` and `Travel and Entertainment` categories, and blank Actual Savings for months without a Cutoff. If any check fails, record the exact visible error before changing data.
