@@ -1,5 +1,7 @@
 const SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
-const RANGES = ["Stmt!A:AE", "Budget!A:J", "'Income & Transfers'!A:O", "'Large exp.'!A:C"];
+const GOOGLE_CLIENT_ID = "110894641783-ranndo8u0vmmbq0c59g2vehma2vla4g6.apps.googleusercontent.com";
+const EXPENSE_SHEET_ID = "1ymBBV_MGJcTopCtnykOYac8qvKeesDh_4kMUFr-9aAE";
+const SOURCE_TABS = SourceRanges.tabs;
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
 const serialDate = n => new Date(Date.UTC(1899,11,30) + n * 86400000);
@@ -19,31 +21,23 @@ const fmtOriginal = (value,ccy) => {
 };
 const nowHK = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Hong_Kong",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
 const dayNow = Math.floor((Date.parse(nowHK + "T00:00:00Z") - Date.UTC(1899,11,30))/86400000);
-let tokenClient, accessToken, raw = {}, periods = [], budgetRows = [], budgetPlans = [], events = [], incomeEntries = [], activeTab = "overview", loadEpoch = 0;
-
-$("client-id").value = localStorage.getItem("expense-google-client-id") || "";
-$("sheet-id").value = localStorage.getItem("expense-sheet-id") || "";
+let tokenClient, accessToken, raw = {}, periods = [], budgetRows = [], budgetPlans = [], events = [], incomeEntries = [], sourceFailures = {}, activeTab = "overview", loadEpoch = 0;
 
 $("connect").addEventListener("click", () => {
-  const clientId = $("client-id").value.trim(), sheetId = $("sheet-id").value.trim();
   $("connect-error").textContent = "";
-  if (!clientId.endsWith(".apps.googleusercontent.com")) return error("Enter a valid Google OAuth client ID.");
-  if (!/^[A-Za-z0-9_-]{20,}$/.test(sheetId)) return error("Enter a valid spreadsheet ID.");
   if (!window.google?.accounts?.oauth2) return error("Google sign-in is still loading. Try again.");
-  localStorage.setItem("expense-google-client-id",clientId);
-  localStorage.setItem("expense-sheet-id",sheetId);
-  tokenClient = google.accounts.oauth2.initTokenClient({client_id:clientId,scope:SCOPE,callback:async result => {
-    if (result.error || !result.access_token) return error("Google authorization failed. Check your account and OAuth settings.");
+  tokenClient = google.accounts.oauth2.initTokenClient({client_id:GOOGLE_CLIENT_ID,scope:SCOPE,callback:async result => {
+    if (result.error || !result.access_token) return error("Google sign-in did not complete. Check the selected account and OAuth settings.");
     accessToken = result.access_token;
     await loadData();
-  }});
+  },error_callback:result => error(result?.type==="popup_closed" ? "Google sign-in was cancelled." : "Google sign-in could not open. Allow pop-ups and try again.")});
   tokenClient.requestAccessToken({prompt:""});
 });
 $("refresh").addEventListener("click",async () => { if (accessToken) await loadData(); else $("connect").click(); });
 $("disconnect").addEventListener("click",() => {
   const tokenToRevoke = accessToken;
   loadEpoch++;
-  accessToken = undefined; raw = {}; periods = []; budgetRows = []; budgetPlans = []; events = []; incomeEntries = [];
+  accessToken = undefined; raw = {}; periods = []; budgetRows = []; budgetPlans = []; events = []; incomeEntries = []; sourceFailures = {};
   $("dashboard").replaceChildren();
   $("dashboard").hidden = true; $("setup").hidden = false; $("sync-time").textContent = "Disconnected";
   if (tokenToRevoke && window.google?.accounts?.oauth2) {
@@ -87,31 +81,59 @@ function setTab(tab) {
 async function loadData() {
   const epoch = loadEpoch, token = accessToken;
   error("Loading sheet data…");
-  const query = new URLSearchParams({valueRenderOption:"UNFORMATTED_VALUE",majorDimension:"ROWS"});
-  RANGES.forEach(range => query.append("ranges",range));
   try {
-    const sheetId = localStorage.getItem("expense-sheet-id");
-    const response = await fetch("https://sheets.googleapis.com/v4/spreadsheets/"+sheetId+"/values:batchGet?"+query,{headers:{Authorization:"Bearer "+token},cache:"no-store"});
-    if (!response.ok) throw new Error(response.status===403 ? "This account cannot read the sheet, or Sheets API is not enabled." : "Sheet request failed ("+response.status+").");
+    const base = "https://sheets.googleapis.com/v4/spreadsheets/" + EXPENSE_SHEET_ID;
+    const metadata = await fetch(base + "?fields=sheets(properties(title,gridProperties(columnCount)))",{headers:{Authorization:"Bearer "+token},cache:"no-store"});
+    if (!metadata.ok) throw new Error(metadata.status===401 ? "Google access expired. Connect again." : "Unable to read spreadsheet tabs (" + metadata.status + ").");
+    const sheets = new Map((await metadata.json()).sheets.map(sheet => [sheet.properties.title,sheet.properties]));
+    for (const name of SOURCE_TABS) if (!sheets.has(name)) throw new Error("Required source tab is missing: " + name);
+    const names = SOURCE_TABS;
+    const query = new URLSearchParams({valueRenderOption:"UNFORMATTED_VALUE",majorDimension:"ROWS"});
+    names.forEach(name => query.append("ranges",SourceRanges.range(name,sheets.get(name).gridProperties.columnCount)));
+    const response = await fetch(base+"/values:batchGet?"+query,{headers:{Authorization:"Bearer "+token},cache:"no-store"});
+    if (!response.ok) throw new Error(response.status===401 ? "Google access expired. Connect again." : response.status===403 ? "This account cannot read the sheet, or Sheets API is not enabled." : "Sheet request failed ("+response.status+").");
     const data = await response.json();
     if (epoch !== loadEpoch) return;
-    const nextRaw = Object.fromEntries(data.valueRanges.map((item,i) => [RANGES[i].split("!")[0].replaceAll("'",""),item.values || []]));
+    if (data.valueRanges?.length !== names.length) throw new Error("Sheet response did not include every requested source range.");
+    const nextRaw = Object.fromEntries(data.valueRanges.map((item,i) => [names[i],item.values || []]));
     const nextPeriods = StatementModel.parse(nextRaw.Stmt,dayNow);
     if (!nextPeriods.length) throw new Error("No completed balance periods are available in Statement.");
+    const nextBudget = SourceModel.budget(nextRaw.Budget);
+    const nextFailures = {};
+    const detail = (name,parse) => {
+      try {
+        const result=parse(), incomplete=result.issues.filter(x=>x.severity==="incomplete");
+        if (incomplete.length) throw new Error(incomplete.length+" incomplete row(s): "+incomplete.slice(0,3).map(formatIssue).join("; "));
+        return result;
+      } catch(e) { nextFailures[name]=e.message; const unavailable=[]; unavailable.issues=[]; return unavailable; }
+    };
+    const nextPlans = detail("Future One-off Plans",()=>SourceModel.plans(nextRaw["Future One-off Plans"],nextBudget.budgetRows));
+    const nextEvents = detail("Large exp.",()=>SourceModel.expenses(nextRaw["Large exp."]));
+    const nextIncome = detail("Income & Transfers",()=>SourceModel.income(nextRaw["Income & Transfers"]));
+    const nextFx = SourceModel.exchangeRates(nextRaw["Ex. Rate"],nextRaw["FX Feed"],dayNow);
+    const issues = [...nextBudget.issues,...nextPlans.issues,...nextEvents.issues,...nextIncome.issues,...nextFx.issues];
+    const incomplete = nextBudget.issues.concat(nextFx.issues).filter(item => item.severity === "incomplete");
+    if (incomplete.length) throw new Error("Incomplete / Needs Review ("+incomplete.length+"): "+incomplete.slice(0,5).map(formatIssue).join("; "));
     raw = nextRaw;
-    extract(nextPeriods);
-    $("setup").hidden = true; $("dashboard").hidden = false; $("refresh").hidden = false; error("");
+    sourceFailures=nextFailures;
+    extract(nextPeriods,nextBudget,nextPlans,nextEvents,nextIncome);
+    const fxStatus="FX "+dateLabel(nextFx.date)+": "+nextFx.summary.map(x=>x.currency+" "+x.status+(Number.isFinite(x.sourceDate)?" ("+dateLabel(x.sourceDate)+")":"")).join("; ");
+    const failed=Object.entries(nextFailures).map(([name,message])=>name+" unavailable / Incomplete: "+message);
+    $("data-status").textContent = fxStatus+(failed.length?"\n"+failed.join("\n"):"")+(issues.length ? "\nNeeds Review ("+issues.length+" warning"+(issues.length===1?"":"s")+"): \n"+issues.map(formatIssue).join("\n") : "");
+    $("setup").hidden = true; $("dashboard").hidden = false; $("refresh").hidden = false; $("disconnect").hidden = false; error("");
     $("sync-time").title = "";
     $("sync-time").textContent = "Updated " + new Intl.DateTimeFormat("en-GB",{hour:"2-digit",minute:"2-digit",timeZone:"Asia/Hong_Kong"}).format(new Date()) + " HKT";
     renderAll();
-  } catch(e) { if (epoch === loadEpoch) { const message=e.message || "Unable to load sheet data."; error(message); if (!$("dashboard").hidden) { $("sync-time").textContent="Refresh failed"; $("sync-time").title=message; } } }
+  } catch(e) { if (epoch === loadEpoch) { const message=e.message || "Unable to load sheet data."; error("Sheet data load failed: " + message); $("dashboard").hidden=true; $("setup").hidden=false; $("sync-time").textContent="Data load failed"; $("sync-time").title=message; } }
 }
-function extract(parsedPeriods = StatementModel.parse(raw.Stmt,dayNow)) {
+function formatIssue(item) { return item.sheet+" / "+item.section+", row "+item.row+", column "+item.column+", '"+(item.tag||"(blank)")+"', amount "+(Number.isFinite(item.amount)?item.amount:"—"); }
+function extract(parsedPeriods,parsedBudget,parsedPlans,parsedEvents,parsedIncome) {
   const oldEnd = periods[Number($("period").value)]?.end;
   periods = parsedPeriods.map(period => ({...period,label:dateLabel(period.end)}));
-  ({budgetRows,budgetPlans}=SourceModel.budget(raw.Budget||[]));
-  events=SourceModel.expenses(raw["Large exp."]||[]).map(event=>({...event,category:suggestCategory(event.description)}));
-  incomeEntries=SourceModel.income(raw["Income & Transfers"]||[]);
+  budgetRows=parsedBudget.budgetRows;
+  budgetPlans=parsedPlans;
+  events=parsedEvents;
+  incomeEntries=parsedIncome;
   const selector=$("period");
   selector.innerHTML=periods.map((p,i)=>"<option value='"+i+"'>"+esc(p.label)+"</option>").join("");
   selector.value=String(Math.max(0,periods.findIndex(x=>x.end===oldEnd) >= 0 ? periods.findIndex(x=>x.end===oldEnd) : periods.length-1));
@@ -126,7 +148,7 @@ function extract(parsedPeriods = StatementModel.parse(raw.Stmt,dayNow)) {
   const categories=[...new Set(periods.flatMap(p=>p.positions.map(x=>x.category)))].filter(Boolean).sort();
   $("asset-category").innerHTML="<option value=''>All categories</option>"+categories.map(c=>"<option value='"+esc(c)+"'>"+esc(c)+"</option>").join("");
   const eventCategories=[...new Set(events.map(e=>e.category))].sort();
-  $("event-category").innerHTML="<option value=''>All suggested categories</option>"+eventCategories.map(c=>"<option value='"+esc(c)+"'>"+esc(c)+"</option>").join("");
+  $("event-category").innerHTML="<option value=''>All categories</option>"+eventCategories.map(c=>"<option value='"+esc(c)+"'>"+esc(c)+"</option>").join("");
   const incomeTypes=[...new Set(incomeEntries.map(e=>e.type))].sort(), incomeAccounts=[...new Set(incomeEntries.map(e=>e.account))].sort();
   $("income-type").innerHTML="<option value=''>All income types</option>"+incomeTypes.map(x=>"<option value='"+esc(x)+"'>"+esc(x)+"</option>").join("");
   $("income-account").innerHTML="<option value=''>All accounts</option>"+incomeAccounts.map(x=>"<option value='"+esc(x)+"'>"+esc(x)+"</option>").join("");
@@ -189,16 +211,6 @@ function renderAssetRows() {
   $("holding-count").textContent=list.length+" positions";
   $("asset-rows").innerHTML=list.map(x=>"<tr><td><span class='tag "+(x.type==="Liabilities"?"debt":"")+"'>"+esc(x.type)+"</span></td><td>"+esc(x.category)+"</td><td>"+esc(x.account)+"</td><td>"+esc(x.holding||"—")+"</td><td>"+esc(x.ccy)+"</td><td class='numeric'>"+fmtOriginal(x.original,x.ccy)+"</td><td class='numeric'>"+fmt(x.hkd)+"</td><td class='numeric "+(x.hkd-x.previous<0?"negative":"positive")+"'>"+fmt(Number.isFinite(x.previous)?x.hkd-x.previous:NaN)+"</td></tr>").join("") || "<tr><td colspan='8' class='empty'>No matching positions.</td></tr>";
 }
-function suggestCategory(text) {
-  const t=text.toLowerCase();
-  if(/trip|travel|japan|hotel|flight|旅遊|酒店|機票|日幣|潮汕|台中|台灣旅/.test(t))return "Travel";
-  if(/sofa|rent|house|home|bed|mattress|router|dyson|dehumidifier|moving|agent fee|新房|床|搬家/.test(t))return "Home & moving";
-  if(/gift|birthday|airpod|longchamp|女友|禮物|生日/.test(t))return "Gifts";
-  if(/chiro|health|irestore|healthcare|醫/.test(t))return "Health";
-  if(/dinner|vegan|餐|飯/.test(t))return "Dining";
-  if(/老媽|保險|insurance|family|媽媽/.test(t))return "Family & insurance";
-  return "Other";
-}
 function visibleEvents() {
   const p=selected(),windowValue=$("spend-window").value;
   return events.filter(e=>windowValue==="period" ? e.date>p.start&&e.date<=p.end : monthKey(e.date)===windowValue);
@@ -220,7 +232,7 @@ function renderSpending() {
   const receipts=visibleIncomeEntries(),incomeMode=$("income-group").value,incomeGrouped=new Map();
   receipts.forEach(e=>{const key=incomeMode==="account"?e.account:e.type;incomeGrouped.set(key,(incomeGrouped.get(key)||0)+e.amount);});
   const incomeGroups=[...incomeGrouped].map(([label,value])=>({label,value})).sort((a,b)=>Math.abs(b.value)-Math.abs(a.value));
-  $("income-groups").innerHTML=barRows(incomeGroups,null,{click:true,colors:["","blue","gold"]})+"<div class='summary-total'><span>Logged income entries</span><strong>"+fmt(receipts.reduce((sum,e)=>sum+e.amount,0))+"</strong></div>";
+  $("income-groups").innerHTML=sourceFailures["Income & Transfers"] ? "<div class='status-box'>Income detail unavailable / Incomplete: "+esc(sourceFailures["Income & Transfers"])+"</div>" : barRows(incomeGroups,null,{click:true,colors:["","blue","gold"]})+"<div class='summary-total'><span>Logged income entries</span><strong>"+fmt(receipts.reduce((sum,e)=>sum+e.amount,0))+"</strong></div>";
   $("income-groups").querySelectorAll("[data-group]").forEach(row=>row.addEventListener("click",()=>{
     if(incomeMode==="account"){$("income-account").value=row.dataset.group;$("income-type").value="";}
     else {$("income-type").value=row.dataset.group;$("income-account").value="";}
@@ -230,13 +242,13 @@ function renderSpending() {
   const grouped=new Map();
   list.forEach(e=>{const key=mode==="month"?monthLabel(e.date):e.category;grouped.set(key,(grouped.get(key)||0)+e.amount)});
   const groups=[...grouped].map(([label,value])=>({label,value})).sort((a,b)=>Math.abs(b.value)-Math.abs(a.value));
-  $("event-groups").innerHTML=barRows(groups,null,{click:true,colors:["coral","gold","blue","purple"]})+"<div class='summary-total'><span>Logged entries</span><strong>"+fmt(list.reduce((sum,e)=>sum+e.amount,0))+"</strong></div>";
+  $("event-groups").innerHTML=sourceFailures["Large exp."] ? "<div class='status-box'>Large expense detail unavailable / Incomplete: "+esc(sourceFailures["Large exp."])+"</div>" : barRows(groups,null,{click:true,colors:["coral","gold","blue","purple"]})+"<div class='summary-total'><span>Logged entries</span><strong>"+fmt(list.reduce((sum,e)=>sum+e.amount,0))+"</strong></div>";
   $("event-groups").querySelectorAll("[data-group]").forEach(row=>row.addEventListener("click",()=>{
     if(mode==="category")$("event-category").value=row.dataset.group;
     else {$("spend-window").value=monthKey(list.find(e=>monthLabel(e.date)===row.dataset.group)?.date);renderSpending();return;}
     renderEventRows();
   }));
-  if($("spend-window").value==="period"&&Number.isFinite(p.large)) {
+  if(!sourceFailures["Large exp."]&&$("spend-window").value==="period"&&Number.isFinite(p.large)) {
     const logged=list.reduce((sum,e)=>sum+e.amount,0),difference=p.large-logged;
     $("event-groups").insertAdjacentHTML("beforeend","<p class='mini-note'>Logged entries vs Statement large-expense adjustment: "+fmt(difference)+" difference. Dates and manual adjustments may not align.</p>");
   }
@@ -244,12 +256,14 @@ function renderSpending() {
   renderEventRows();
 }
 function renderIncomeRows() {
+  if(sourceFailures["Income & Transfers"]) {$("income-count").textContent="Incomplete";$("income-rows").innerHTML="<tr><td colspan='5' class='empty'>Income detail unavailable.</td></tr>";return;}
   const search=$("income-search").value.toLowerCase().trim(),type=$("income-type").value,account=$("income-account").value;
   const list=visibleIncomeEntries().filter(e=>(!type||e.type===type)&&(!account||e.account===account)&&(!search||[e.description,e.account,e.type].join(" ").toLowerCase().includes(search)));
   $("income-count").textContent=list.length+" entries · "+fmt(list.reduce((sum,e)=>sum+e.amount,0));
   $("income-rows").innerHTML=list.map(e=>"<tr><td>"+esc(dateLabel(e.date))+"</td><td title='"+esc(e.description)+"'>"+esc(e.description)+"</td><td><span class='tag'>"+esc(e.type)+"</span></td><td>"+esc(e.account)+"</td><td class='numeric'>"+fmt(e.amount)+"</td></tr>").join("") || "<tr><td colspan='5' class='empty'>No matching income entries.</td></tr>";
 }
 function renderEventRows() {
+  if(sourceFailures["Large exp."]) {$("event-count").textContent="Incomplete";$("event-rows").innerHTML="<tr><td colspan='4' class='empty'>Large expense detail unavailable.</td></tr>";return;}
   const search=$("event-search").value.toLowerCase().trim(),category=$("event-category").value;
   const list=visibleEvents().filter(e=>(!category||e.category===category)&&(!search||e.description.toLowerCase().includes(search)));
   $("event-count").textContent=list.length+" entries · "+fmt(list.reduce((sum,e)=>sum+e.amount,0));
@@ -266,6 +280,7 @@ function renderBudget() {
   renderBudgetPlans();
 }
 function renderBudgetPlans() {
+  if(sourceFailures["Future One-off Plans"]) {$("plan-count").textContent="Incomplete";$("plan-rows").innerHTML="<tr><td colspan='8' class='empty'>Future One-off Plans unavailable: "+esc(sourceFailures["Future One-off Plans"])+"</td></tr>";return;}
   const b=budgetRows[Number($("budget-month").value)];if(!b)return;
   const scope=$("plan-scope").value,search=$("plan-search").value.toLowerCase().trim(),category=$("plan-category").value,status=$("plan-status").value;
   const list=budgetPlans.filter(x=>(scope==="all"||monthKey(x.date)===monthKey(b.month))&&(!category||x.category===category)&&(!status||(status==="included"?x.included:!x.included))&&(!search||[x.event,x.category,x.notes].join(" ").toLowerCase().includes(search)));
