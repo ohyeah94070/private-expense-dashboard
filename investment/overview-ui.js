@@ -49,6 +49,7 @@
     $("summary-cash-note").textContent = `${currency()} equivalent`;
   }
   function renderAllocation(reset = false) {
+    if (!$('allocation-rows')) return;
     const rows = Model.allocation(data, period(), broker(), currency());
     if (reset) allocationSelection = new Set(rows.map(row => row.id));
     $("allocation-scope").textContent = `${period() === "current" ? "Current" : period()} · ${broker() === "ALL" ? "All brokers" : broker()}`;
@@ -137,12 +138,12 @@
       renderPerformance();
     });
     for (const id of ["history-start", "history-end", "history-pnl"]) $(id).addEventListener("change", renderPerformance);
-    $("allocation-all").addEventListener("change", event => {
+    if ($("allocation-all")) $("allocation-all").addEventListener("change", event => {
       const rows = Model.allocation(data, period(), broker(), currency());
       allocationSelection = event.target.checked ? new Set(rows.map(row => row.id)) : new Set();
       renderAllocation();
     });
-    $("allocation-rows").addEventListener("change", event => {
+    if ($("allocation-rows")) $("allocation-rows").addEventListener("change", event => {
       const id = event.target.dataset.allocationId;
       if (!id) return;
       if (event.target.checked) allocationSelection.add(id); else allocationSelection.delete(id);
@@ -175,8 +176,8 @@
     data = null;
     allocationSelection.clear();
     pnlSelection.clear();
-    for (const id of ["summary-nav", "summary-equity", "summary-cash", "allocation-total", "allocation-percent-total", ...Model.PNL_FIELDS.map((_, i) => `pnl-total-${i}`)]) $(id).textContent = "—";
-    for (const id of ["allocation-rows", "pnl-rows", "open-pl-rows", "performance-rows", "market-rows", "nav-chart"]) $(id).innerHTML = "";
+    for (const id of ["summary-nav", "summary-equity", "summary-cash", "allocation-total", "allocation-percent-total", ...Model.PNL_FIELDS.map((_, i) => `pnl-total-${i}`)]) if ($(id)) $(id).textContent = "—";
+    for (const id of ["allocation-rows", "pnl-rows", "open-pl-rows", "performance-rows", "market-rows", "nav-chart"]) if ($(id)) $(id).innerHTML = "";
   }
   return Object.freeze({mount, clear, renderAll});
 });

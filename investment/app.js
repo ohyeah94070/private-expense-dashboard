@@ -11,7 +11,7 @@ document.querySelectorAll(".tab").forEach(button => button.addEventListener("cli
 
 function setError(message) { $("connect-error").textContent = message; }
 function showTab(name) {
-  if (!["overview", "profits", "holdings", "activity", "market"].includes(name)) name = "overview";
+  if (!["overview", "profits", "activity", "market"].includes(name)) name = "overview";
   document.querySelectorAll(".tab").forEach(button => button.classList.toggle("active", button.dataset.tab === name));
   document.querySelectorAll(".view").forEach(view => view.hidden = view.id !== `view-${name}`);
   location.hash = name;
@@ -20,6 +20,7 @@ function clearFinancialDisplay(message) {
   data = null;
   if (typeof OverviewUI !== "undefined") OverviewUI.clear();
   if (typeof ReturnUI !== "undefined") ReturnUI.clear();
+  if (typeof ValueHistoryUI !== "undefined") ValueHistoryUI.clear();
   if (typeof HoldingsUI !== "undefined") HoldingsUI.clear();
   if (typeof ActivityUI !== "undefined") ActivityUI.clear();
   $("app").hidden = true;
@@ -70,6 +71,7 @@ async function load() {
     data = next;
     OverviewUI.mount(data);
     ReturnUI.mount(data);
+    ValueHistoryUI.mount(data);
     HoldingsUI.mount(data);
     ActivityUI.mount(data);
     $("setup").hidden = true;

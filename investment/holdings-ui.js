@@ -14,7 +14,7 @@
   const palette = ["#0d826f", "#2b8ba3", "#5a78b8", "#8769a8", "#bb7595", "#d18a58", "#a7a247", "#438c68", "#5588a1", "#8176b6", "#c27074", "#8b9a58"];
   let data = null, selected = new Set(), bound = false;
   const currency = () => $("currency-select").value;
-  const broker = () => $("holdings-broker").value;
+  const broker = () => $("overview-broker").value;
   const displayHKD = value => currency() === "HKD" ? value : V2.convert(data, value, "HKD", "USD", data.currentMonth);
 
   function renderTable(rows) {
@@ -63,7 +63,7 @@
   function bind() {
     if (bound) return;
     bound = true;
-    $("holdings-broker").addEventListener("change", render);
+    $("overview-broker").addEventListener("change", render);
     $("currency-select").addEventListener("change", render);
     $("holdings-all").addEventListener("change", event => {
       for (const row of Model.rows(data, broker(), currency())) {
