@@ -11,7 +11,7 @@ document.querySelectorAll(".tab").forEach(button => button.addEventListener("cli
 
 function setError(message) { $("connect-error").textContent = message; }
 function showTab(name) {
-  if (!["overview", "holdings", "activity"].includes(name)) name = "overview";
+  if (!["overview", "holdings", "activity", "market"].includes(name)) name = "overview";
   document.querySelectorAll(".tab").forEach(button => button.classList.toggle("active", button.dataset.tab === name));
   document.querySelectorAll(".view").forEach(view => view.hidden = view.id !== `view-${name}`);
   location.hash = name;
