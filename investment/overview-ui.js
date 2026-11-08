@@ -54,6 +54,7 @@
     $("allocation-scope").textContent = `${period() === "current" ? "Current" : period()} · ${broker() === "ALL" ? "All brokers" : broker()}`;
     $("allocation-rows").innerHTML = rows.map(row => `<tr><td><input type="checkbox" data-allocation-id="${escape(row.id)}" ${allocationSelection.has(row.id) ? "checked" : ""} aria-label="Select ${escape(row.broker)} ${escape(row.symbol || row.assetType)}"></td><td>${escape(row.broker)}</td><td>${escape(row.assetType)}</td><td><strong>${escape(row.symbol || (row.assetType.toLowerCase() === "cash" ? `${row.sourceCurrency} cash` : row.assetType))}</strong></td><td>${escape(row.sourceCurrency)}</td><td class="numeric ${tone(row.value)}">${money(row.value, currency())}</td><td class="numeric">${percent(row.weight)}</td></tr>`).join("") || '<tr><td colspan="7" class="empty">No positions for this period and broker.</td></tr>';
     $("allocation-total").textContent = money(Model.selectedTotal(rows, allocationSelection), currency());
+    $("allocation-percent-total").textContent = percent(Model.selectedWeight(rows, allocationSelection));
     $("allocation-all").checked = rows.length > 0 && rows.every(row => allocationSelection.has(row.id));
     $("allocation-all").indeterminate = rows.some(row => allocationSelection.has(row.id)) && !$("allocation-all").checked;
   }
@@ -72,29 +73,43 @@
     $("open-pl-rows").innerHTML = rows.map(row => `<tr><td><strong>${escape(row.symbol || "—")}</strong></td><td>${escape(row.assetType)}</td><td class="numeric ${tone(row.ibkr)}">${money(row.ibkr, currency())}</td><td class="numeric ${tone(row.webull)}">${money(row.webull, currency())}</td><td class="numeric ${tone(row.combined)}"><strong>${money(row.combined, currency())}</strong></td></tr>`).join("") || '<tr><td colspan="5" class="empty">No open positions.</td></tr>';
     $("open-pl-note").textContent = period() === "current" ? "Current Positions Unrealized P&L, converted from each row's original currency." : "Positions Open Position P&L (USD), converted using that month's FX. Missing source values remain —.";
   }
-  function chart(rows) {
-    const valid = rows.map((row, index) => ({...row, index})).filter(row => Number.isFinite(row.nav));
-    if (!valid.length) return '<p class="empty">No historical NAV values.</p>';
-    const min = Math.min(...valid.map(row => row.nav)), max = Math.max(...valid.map(row => row.nav));
-    const low = Math.min(0, min), high = max === low ? low + 1 : max;
-    const width = 900, height = 250, left = 70, right = 20, top = 18, bottom = 42;
-    const x = index => left + (rows.length < 2 ? 0 : index * (width - left - right) / (rows.length - 1));
-    const y = value => top + (high - value) * (height - top - bottom) / (high - low);
+  function chart(rows, showPnl) {
+    if (!rows.length) return '<p class="empty">No history in this date range.</p>';
+    const valid = rows.filter(row => Number.isFinite(row.nav));
+    if (!valid.length && !showPnl) return '<p class="empty">No historical NAV values in this date range.</p>';
+    const width = 900, height = 280, left = 75, right = showPnl ? 78 : 25, top = 38, bottom = 48;
+    const dates = rows.map(row => Date.parse(`${row.date}T00:00:00Z`));
+    const first = dates[0], last = dates.at(-1), span = last - first;
+    const x = index => span ? left + (dates[index] - first) * (width - left - right) / span : (left + width - right) / 2;
+    const navValues = valid.map(row => row.nav);
+    const navLow = Math.min(0, ...navValues), navHigh = Math.max(1, ...navValues, navLow + 1);
+    const y = value => top + (navHigh - value) * (height - top - bottom) / (navHigh - navLow);
+    const compact = value => escape(new Intl.NumberFormat("en-HK", {notation: "compact", maximumFractionDigits: 1}).format(value));
+    const navTicks = [0, 0.5, 1].map(frac => { const value = navLow + frac * (navHigh - navLow); return `<line x1="${left}" y1="${y(value)}" x2="${width - right}" y2="${y(value)}" stroke="#e3ecee"/><text x="${left - 8}" y="${y(value) + 4}" text-anchor="end">${compact(value)}</text>`; }).join("");
+    const labelIndexes = [0];
+    for (let i = 1; i < rows.length - 1; i++) if (x(i) - x(labelIndexes.at(-1)) >= 105 && x(rows.length - 1) - x(i) >= 75) labelIndexes.push(i);
+    if (rows.length > 1 && x(rows.length - 1) - x(labelIndexes.at(-1)) >= 75) labelIndexes.push(rows.length - 1);
+    const labels = labelIndexes.map(index => { const d = new Date(dates[index]); const label = new Intl.DateTimeFormat("en-US", {month: "short", year: "2-digit", timeZone: "UTC"}).format(d); return `<text x="${x(index).toFixed(1)}" y="${height - 13}" text-anchor="middle">${escape(label)}</text>`; }).join("");
     let paths = [], segment = [];
-    for (let i = 0; i < rows.length; i++) {
-      if (Number.isFinite(rows[i].nav)) segment.push(`${x(i).toFixed(1)},${y(rows[i].nav).toFixed(1)}`);
-      else if (segment.length) { paths.push(segment); segment = []; }
-    }
+    rows.forEach((row, index) => { if (Number.isFinite(row.nav)) segment.push(`${x(index).toFixed(1)},${y(row.nav).toFixed(1)}`); else if (segment.length) { paths.push(segment); segment = []; } });
     if (segment.length) paths.push(segment);
     const line = paths.map(points => points.length > 1 ? `<polyline points="${points.join(" ")}" fill="none" stroke="#0e7d6c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>` : "").join("");
-    const dots = valid.map(row => `<circle cx="${x(row.index).toFixed(1)}" cy="${y(row.nav).toFixed(1)}" r="3.2" fill="#0e7d6c"><title>${escape(row.month)}: ${money(row.nav, currency())}</title></circle>`).join("");
-    const ticks = [0, 0.5, 1].map(frac => { const value = low + frac * (high - low); return `<line x1="${left}" y1="${y(value)}" x2="${width - right}" y2="${y(value)}" stroke="#e3ecee"/><text x="${left - 8}" y="${y(value) + 4}" text-anchor="end">${escape(new Intl.NumberFormat("en-HK", {notation: "compact", maximumFractionDigits: 1}).format(value))}</text>`; }).join("");
-    const labels = rows.map((row, index) => ({row, index})).filter(({index}) => index === 0 || index === rows.length - 1 || index % Math.max(1, Math.ceil(rows.length / 8)) === 0).map(({row, index}) => `<text x="${x(index)}" y="${height - 12}" text-anchor="middle">${row.month}</text>`).join("");
-    return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Historical NAV in ${currency()}" preserveAspectRatio="xMidYMid meet"><g class="chart-axis">${ticks}${labels}</g>${line}${dots}</svg>`;
+    const dots = rows.map((row, index) => Number.isFinite(row.nav) ? `<circle cx="${x(index).toFixed(1)}" cy="${y(row.nav).toFixed(1)}" r="3.2" fill="#0e7d6c"><title>${escape(row.date)} NAV: ${money(row.nav, currency())}</title></circle>` : "").join("");
+    let bars = "", pnlTicks = "";
+    if (showPnl) {
+      const pnlValues = rows.map(row => row.pnl).filter(Number.isFinite);
+      const limit = Math.max(1, ...pnlValues.map(Math.abs));
+      const py = value => top + (limit - value) * (height - top - bottom) / (2 * limit);
+      const barWidth = Math.min(30, Math.max(8, (width - left - right) / Math.max(rows.length, 1) * 0.45));
+      bars = rows.map((row, index) => Number.isFinite(row.pnl) ? `<rect x="${(x(index) - barWidth / 2).toFixed(1)}" y="${Math.min(py(0), py(row.pnl)).toFixed(1)}" width="${barWidth.toFixed(1)}" height="${Math.max(1, Math.abs(py(row.pnl) - py(0))).toFixed(1)}" fill="${row.pnl < 0 ? "#c56570" : "#85b8cf"}" opacity="0.8"><title>${escape(row.date)} Monthly P&amp;L: ${money(row.pnl, currency())}</title></rect>` : "").join("");
+      pnlTicks = [-limit, 0, limit].map(value => `<text x="${width - right + 8}" y="${py(value) + 4}">${compact(value)}</text>`).join("");
+    }
+    return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Historical NAV${showPnl ? " and Monthly P&L" : ""} in ${currency()}" preserveAspectRatio="xMidYMid meet"><g class="chart-axis"><text x="${left}" y="17">NAV (${currency()})</text>${showPnl ? `<text x="${width - right + 8}" y="17">P&amp;L (${currency()})</text>` : ""}${navTicks}${pnlTicks}${labels}</g>${bars}${line}${dots}</svg>`;
   }
   function renderPerformance() {
-    const rows = Model.performance(data, broker(), currency());
-    $("nav-chart").innerHTML = chart(rows);
+    const all = Model.performance(data, broker(), currency());
+    const rows = Model.performanceRange(all, $("history-range").value, $("history-start").value, $("history-end").value);
+    $("nav-chart").innerHTML = chart(rows, $("history-pnl").checked);
     $("performance-rows").innerHTML = rows.map(row => `<tr><td>${row.month}</td><td class="numeric">${money(row.nav, currency())}</td><td class="numeric ${tone(row.pnl)}">${money(row.pnl, currency())}</td></tr>`).join("") || '<tr><td colspan="3" class="empty">No historical months.</td></tr>';
   }
   function renderMarket() {
@@ -117,6 +132,11 @@
     $("currency-select").addEventListener("change", () => renderAll());
     for (const id of ["pnl-start", "pnl-end", "pnl-broker"]) $(id).addEventListener("change", () => { populateSymbols(); renderPnL(true); });
     $("pnl-symbol").addEventListener("change", () => renderPnL(true));
+    $("history-range").addEventListener("change", () => {
+      document.querySelectorAll(".history-custom").forEach(element => { element.hidden = $("history-range").value !== "CUSTOM"; });
+      renderPerformance();
+    });
+    for (const id of ["history-start", "history-end", "history-pnl"]) $(id).addEventListener("change", renderPerformance);
     $("allocation-all").addEventListener("change", event => {
       const rows = Model.allocation(data, period(), broker(), currency());
       allocationSelection = event.target.checked ? new Set(rows.map(row => row.id)) : new Set();
@@ -145,13 +165,17 @@
     bind();
     populatePeriods();
     populateSymbols();
+    const dates = Model.performance(data).map(row => row.date);
+    for (const id of ["history-start", "history-end"]) { $(id).min = dates[0] || ""; $(id).max = dates.at(-1) || ""; }
+    if (!$("history-start").value) $("history-start").value = dates[0] || "";
+    if (!$("history-end").value) $("history-end").value = dates.at(-1) || "";
     renderAll(true);
   }
   function clear() {
     data = null;
     allocationSelection.clear();
     pnlSelection.clear();
-    for (const id of ["summary-nav", "summary-equity", "summary-cash", "allocation-total", ...Model.PNL_FIELDS.map((_, i) => `pnl-total-${i}`)]) $(id).textContent = "—";
+    for (const id of ["summary-nav", "summary-equity", "summary-cash", "allocation-total", "allocation-percent-total", ...Model.PNL_FIELDS.map((_, i) => `pnl-total-${i}`)]) $(id).textContent = "—";
     for (const id of ["allocation-rows", "pnl-rows", "open-pl-rows", "performance-rows", "market-rows", "nav-chart"]) $(id).innerHTML = "";
   }
   return Object.freeze({mount, clear, renderAll});

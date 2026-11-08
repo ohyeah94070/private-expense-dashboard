@@ -35,6 +35,10 @@
     const selected = rows.filter(row => selectedIds.has(row.id));
     return rows.length && !selected.length ? 0 : sum(selected.map(row => row.value));
   }
+  function selectedWeight(rows, selectedIds) {
+    const selected = rows.filter(row => selectedIds.has(row.id));
+    return !selected.length ? 0 : sum(selected.map(row => row.weight));
+  }
   function summary(data, period = "current", broker = "ALL", currency = "HKD") {
     const rows = rowsFor(data, period, broker);
     const category = type => {
@@ -78,7 +82,26 @@
     }).sort((a, b) => a.symbol.localeCompare(b.symbol));
   }
   function performance(data, broker = "ALL", currency = "HKD") {
-    return allMonths(data).map(month => ({month, nav: V2.nav(data, month, broker, currency), pnl: V2.monthlyPnl(data, month, broker, currency)}));
+    return allMonths(data).map(month => {
+      const dates = [...data.positions, ...data.pnl].filter(row => row.date?.slice(0, 7) === month).map(row => row.date);
+      return {month, date: dates.sort().at(-1), nav: V2.nav(data, month, broker, currency), pnl: V2.monthlyPnl(data, month, broker, currency)};
+    }).sort((a, b) => Date.parse(`${a.date}T00:00:00Z`) - Date.parse(`${b.date}T00:00:00Z`));
   }
-  return Object.freeze({PNL_FIELDS, periodMonths, pnlMonths, allMonths, allocation, selectedTotal, summary, pnlRows, pnlTotals, openPositions, performance});
+  function performanceRange(rows, range = "ALL", start = "", end = "") {
+    if (!rows.length) return [];
+    const latest = Date.parse(`${rows.at(-1).date}T00:00:00Z`);
+    const latestDate = new Date(latest);
+    let lower = -Infinity, upper = Infinity;
+    if (range === "CUSTOM") {
+      lower = start ? Date.parse(`${start}T00:00:00Z`) : -Infinity;
+      upper = end ? Date.parse(`${end}T00:00:00Z`) : Infinity;
+      if (Number.isNaN(lower) || Number.isNaN(upper) || lower > upper) return [];
+    } else if (range === "YTD") lower = Date.UTC(latestDate.getUTCFullYear(), 0, 1);
+    else if ({"1M": 1, "3M": 3, "6M": 6, "1Y": 12}[range]) {
+      const count = {"1M": 1, "3M": 3, "6M": 6, "1Y": 12}[range];
+      lower = Date.UTC(latestDate.getUTCFullYear(), latestDate.getUTCMonth() - count + 1, 1);
+    }
+    return rows.filter(row => { const time = Date.parse(`${row.date}T00:00:00Z`); return time >= lower && time <= upper; });
+  }
+  return Object.freeze({PNL_FIELDS, periodMonths, pnlMonths, allMonths, allocation, selectedTotal, selectedWeight, summary, pnlRows, pnlTotals, openPositions, performance, performanceRange});
 });
