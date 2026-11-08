@@ -18,7 +18,6 @@
   const displayHKD = value => currency() === "HKD" ? value : V2.convert(data, value, "HKD", "USD", data.currentMonth);
 
   function renderTable(rows) {
-    $("holdings-asof").textContent = `As of ${data.current[0]?.date || "—"}`;
     $("holdings-rows").innerHTML = rows.map(row => `<tr><td><input type="checkbox" data-holding-id="${row.id}" ${selected.has(row.id) ? "checked" : ""} aria-label="Select ${escape(row.broker)} ${escape(row.symbol || row.assetType)}"></td><td>${escape(row.broker)}</td><td>${escape(row.assetType)}</td><td><strong>${escape(row.symbol || (row.assetType.toLowerCase() === "cash" ? `Cash (${row.sourceCurrency})` : "—"))}</strong></td><td>${escape(row.sourceCurrency)}</td><td class="numeric">${number(row.quantity)}</td><td class="numeric">${money(row.avgCost, currency())}</td><td class="numeric">${money(row.currentPrice, currency())}</td><td class="numeric ${tone(row.value)}">${money(row.value, currency())}</td><td class="numeric ${tone(row.openPL)}">${money(row.openPL, currency())}</td><td class="numeric">${percent(row.weight)}</td></tr>`).join("") || '<tr><td colspan="11" class="empty">No current holdings for this broker.</td></tr>';
     $("holdings-total").textContent = money(Model.selectedTotal(rows, selected), currency());
     $("holdings-all").checked = rows.length > 0 && rows.every(row => selected.has(row.id));
@@ -87,7 +86,6 @@
   function clear() {
     data = null;
     selected.clear();
-    $("holdings-asof").textContent = "";
     $("holdings-total").textContent = "—";
     for (const id of ["holdings-rows", "holdings-chart", "holdings-legend", "holdings-offsets"]) $(id).innerHTML = "";
   }
