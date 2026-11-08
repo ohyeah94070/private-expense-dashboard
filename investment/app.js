@@ -11,7 +11,7 @@ document.querySelectorAll(".tab").forEach(button => button.addEventListener("cli
 
 function setError(message) { $("connect-error").textContent = message; }
 function showTab(name) {
-  if (!["overview", "holdings", "activity", "market"].includes(name)) name = "overview";
+  if (!["overview", "profits", "holdings", "activity", "market"].includes(name)) name = "overview";
   document.querySelectorAll(".tab").forEach(button => button.classList.toggle("active", button.dataset.tab === name));
   document.querySelectorAll(".view").forEach(view => view.hidden = view.id !== `view-${name}`);
   location.hash = name;
@@ -19,6 +19,7 @@ function showTab(name) {
 function clearFinancialDisplay(message) {
   data = null;
   if (typeof OverviewUI !== "undefined") OverviewUI.clear();
+  if (typeof ReturnUI !== "undefined") ReturnUI.clear();
   if (typeof HoldingsUI !== "undefined") HoldingsUI.clear();
   if (typeof ActivityUI !== "undefined") ActivityUI.clear();
   $("app").hidden = true;
@@ -40,8 +41,8 @@ function connect() {
 }
 async function batchGet(accessToken) {
   const q = new URLSearchParams({valueRenderOption: "UNFORMATTED_VALUE", majorDimension: "ROWS"});
-  V2Data.RANGES.slice(0, -1).forEach(range => q.append("ranges", range));
-  const marketQ = new URLSearchParams({valueRenderOption: "FORMATTED_VALUE", majorDimension: "ROWS", ranges: V2Data.RANGES.at(-1)});
+  V2Data.RANGES.forEach((range, index) => { if (index !== 5) q.append("ranges", range); });
+  const marketQ = new URLSearchParams({valueRenderOption: "FORMATTED_VALUE", majorDimension: "ROWS", ranges: V2Data.RANGES[5]});
   const options = {
     headers: {Authorization: `Bearer ${accessToken}`}, cache: "no-store"
   };
@@ -56,7 +57,7 @@ async function batchGet(accessToken) {
     throw new Error(why);
   }
   const [financial, market] = await Promise.all([response.json(), marketResponse.json()]);
-  return {valueRanges: [...(financial.valueRanges || []), ...(market.valueRanges || [])]};
+  return {valueRanges: [...(financial.valueRanges || []).slice(0, 5), ...(market.valueRanges || []), ...(financial.valueRanges || []).slice(5)]};
 }
 async function load() {
   const request = ++epoch;
@@ -68,6 +69,7 @@ async function load() {
     if (!next.current.length && !next.positions.length) throw new Error("V2 Master has no positions to display.");
     data = next;
     OverviewUI.mount(data);
+    ReturnUI.mount(data);
     HoldingsUI.mount(data);
     ActivityUI.mount(data);
     $("setup").hidden = true;

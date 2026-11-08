@@ -9,7 +9,7 @@
   const RANGES = Object.freeze([
     "'Current Positions'!A1:S1000", "'Positions'!A1:Q1000",
     "'Monthly P&L'!A1:M2000", "'Trades'!A1:Q1001",
-    "'Cash Ledger'!A1:I1000", "'Market Watch'!A1:P1000"
+    "'Cash Ledger'!A1:I1000", "'Market Watch'!A1:P1000", "'Monthly Return'!A1:G100"
   ]);
   const SCHEMAS = Object.freeze({
     current: ["As of Date", "Broker", "Asset Type", "Symbol", "Currency", "Quantity", "Avg Cost", "Current Price", "Market Value", "Unrealized P&L", "Realized P&L", "Dividend", "Interest", "Commission", "Fee", "Tax", "Other Income/Expense", "Monthly P&L", "FX to HKD"],
@@ -17,7 +17,8 @@
     pnl: ["Date", "Broker", "Symbol", "Currency", "Realized P&L", "Unrealized P&L", "Dividend", "Interest", "Commission", "Fee", "Tax", "Other Income/Expense", "Monthly P&L"],
     trades: ["Trade Date", "Broker", "Symbol", "Action", "Quantity", "Price", "Currency", "Gross Amount", "Commission / Fee", "Net Cash Impact", "Quantity After Trade", "Avg Cost Before Trade", "Avg Cost After Trade", "Realized P&L", "Source", "Status", "Review Notes"],
     cash: ["Date", "Broker", "Event Type", "Description", "Currency", "Cash Change", "Source", "Status", "Notes"],
-    market: ["Symbol", "Name", "Price", "1D %", "1W %", "52W High", "52W Low", "Updated At", "P/E (Google)", "Drawdown From High (5Y)", "Max DD Strength (5Y)", "Current DD Strength", "Strength Percentile", "Price vs 50D MA", "Price vs 100D MA", "Price vs 200D MA"]
+    market: ["Symbol", "Name", "Price", "1D %", "1W %", "52W High", "52W Low", "Updated At", "P/E (Google)", "Drawdown From High (5Y)", "Max DD Strength (5Y)", "Current DD Strength", "Strength Percentile", "Price vs 50D MA", "Price vs 100D MA", "Price vs 200D MA"],
+    returns: ["Month", "Beginning NAV (HKD)", "Ending NAV (HKD)", "Net External Flow (HKD)", "Weighted External Flow (HKD)", "Monthly P&L (HKD)", "Monthly Return (%)"]
   });
   const clean = value => String(value ?? "").replace(/^\uFEFF/, "").trim();
   function amount(value) {
@@ -60,7 +61,7 @@
       if (label.includes("Market Watch")) return first ? [Object.fromEntries(schema.map(name => [name, row[columns.get(name)] ?? null]))] : [];
       // Formula-filled blank rows (especially Trades) may contain zeroes beyond columns A:B.
       if (!first && !second) return [];
-      if (!first || !second) throw new Error(`${label}: missing date or broker on row ${index + 2}`);
+      if (!first || (!second && !label.includes("Monthly Return"))) throw new Error(`${label}: missing date or broker on row ${index + 2}`);
       return [Object.fromEntries(schema.map(name => [name, row[columns.get(name)] ?? null]))];
     });
   }
@@ -73,8 +74,10 @@
   };
   function parse(response) {
     const ranges = response?.valueRanges;
-    if (!Array.isArray(ranges) || ranges.length !== RANGES.length) throw new Error("V2 Master: incomplete response");
-    const [c, p, m, t, l, w] = ranges.map((entry, index) => table(entry?.values, Object.values(SCHEMAS)[index], RANGES[index]));
+    if (!Array.isArray(ranges) || ![RANGES.length, RANGES.length - 1].includes(ranges.length)) throw new Error("V2 Master: incomplete response");
+    const legacy = ranges.length === RANGES.length - 1;
+    const parsed = ranges.map((entry, index) => table(entry?.values, Object.values(SCHEMAS)[index], RANGES[index]));
+    const [c, p, m, t, l, w, r] = legacy ? [...parsed, []] : parsed;
     const current = c.map(row => ({date: requiredDate(row["As of Date"], "Current Positions"), assetType: clean(row["Asset Type"]), ...identity(row),
       ...numberFields(row, ["Quantity", "Avg Cost", "Current Price", "Market Value", "Unrealized P&L", "Realized P&L", "Dividend", "Interest", "Commission", "Fee", "Tax", "Other Income/Expense", "Monthly P&L", "FX to HKD"])}));
     const positions = p.map(row => ({date: requiredDate(row["Statement Date"], "Positions"), assetType: clean(row["Asset Type"]), ...identity(row),
@@ -87,11 +90,15 @@
     const cash = l.map(row => ({date: requiredDate(row.Date, "Cash Ledger"), broker: clean(row.Broker), eventType: clean(row["Event Type"]),
       description: clean(row.Description), currency: clean(row.Currency), cashChange: amount(row["Cash Change"]),
       source: clean(row.Source), status: clean(row.Status), notes: clean(row.Notes)}));
+    const returns = r.map(row => ({month: requiredDate(row.Month, "Monthly Return").slice(0, 7),
+      beginning: amount(row["Beginning NAV (HKD)"]), ending: amount(row["Ending NAV (HKD)"]),
+      flow: amount(row["Net External Flow (HKD)"]), weightedFlow: amount(row["Weighted External Flow (HKD)"]),
+      pnl: amount(row["Monthly P&L (HKD)"]), return: amount(row["Monthly Return (%)"])}));
     const market = w.map(row => ({symbol: clean(row.Symbol), name: clean(row.Name), raw: Object.fromEntries(SCHEMAS.market.map(name => [name, row[name]])), price: amount(row.Price),
       day: amount(row["1D %"]), week: amount(row["1W %"]), high: amount(row["52W High"]), low: amount(row["52W Low"]),
       updatedAt: clean(row["Updated At"]), pe: amount(row["P/E (Google)"])})).filter(row => row.symbol);
     const currentMonth = current.length && current.every(row => row.date === current[0].date) ? current[0].date?.slice(0, 7) : null;
-    return {source: SHEET_ID, current, positions, pnl, trades, cash, market, currentMonth};
+    return {source: SHEET_ID, current, positions, pnl, trades, cash, returns, market, currentMonth};
   }
   function fx(data, targetMonth) {
     if (!/^\d{4}-\d{2}$/.test(targetMonth ?? "")) return null;
