@@ -75,6 +75,9 @@ select{cursor:pointer}
 .mini-note,.data-note{font-size:11px;color:#758888;line-height:1.55;margin:10px 0 0}
 .data-note{margin:0 3px}
 .period-chart{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.liquidity-chart{margin:0 0 14px;background:#f8fbf9;border:1px solid #e3eee8;border-radius:8px;padding:10px 14px}
+.liquidity-chart svg{display:block;width:100%;height:180px}
+.chart-labels{display:flex;justify-content:space-between;color:#6b8381;font-size:11px}
 .period-tile{border:1px solid #e0e9e4;background:#f9fbfa;border-radius:9px;padding:13px;text-align:left;display:flex;flex-direction:column;gap:6px;min-height:105px}
 .period-tile:hover,.period-tile.selected{border-color:#15947b;background:#eef8f2}
 .period-tile b{font-size:13px}

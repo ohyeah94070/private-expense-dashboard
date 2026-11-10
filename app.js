@@ -158,7 +158,7 @@ function renderAll() {
   const p=selected();
   if (!p) { $("dashboard").hidden=true; error("No completed balance snapshots are available."); return; }
   $("period-subtitle").textContent=dateLabel(p.start)+" → "+p.label+" · "+p.days+" days";
-  renderOverview(p);renderAssets();renderSpending();renderBudget();
+  renderOverview(p);renderAssets();renderSpending();renderBudget();renderLiquidity();
 }
 function totals(items,key) {
   const result=new Map();
@@ -180,6 +180,10 @@ function renderOverview(p) {
   const parts=[{label:"Large expenses",value:p.large},{label:"Housing",value:p.housing},{label:"Routine / residual",value:p.routine}].filter(x=>Number.isFinite(x.value));
   $("expense-summary").innerHTML=barRows(parts,Math.abs(p.expense),{colors:["coral","gold","slate"]})+"<div class='summary-total'><span>Reconciled expense</span><strong>"+fmt(p.expense)+"</strong></div>";
   $("period-chart").innerHTML=periods.map((x,i)=>"<button type='button' class='period-tile "+(x.end===p.end?"selected":"")+"' data-period='"+i+"'><b>"+esc(x.label)+"</b><span>"+x.days+" days · "+esc(dateLabel(x.start))+" start</span><strong>"+fmt(x.expense)+"</strong></button>").join("");
+  const history=[{label:dateLabel(periods[0].start),nav:periods[0].nav-periods[0].navChange},...periods.map(x=>({label:x.label,nav:x.nav}))];
+  const netValues=history.map(x=>x.nav), netLow=Math.min(...netValues), netSpan=Math.max(...netValues)-netLow||1;
+  const netPoints=history.map((x,i)=>`${20+i*760/Math.max(1,history.length-1)},${155-(x.nav-netLow)/netSpan*125}`).join(" ");
+  $("net-worth-history").innerHTML="<div class='liquidity-chart'><svg viewBox='0 0 800 180' role='img' aria-label='Historical net worth'><polyline points='"+netPoints+"' fill='none' stroke='#14816c' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg><div class='chart-labels'><span>"+esc(history[0].label)+" · "+fmt(history[0].nav)+"</span><span>"+esc(history.at(-1).label)+" · "+fmt(history.at(-1).nav)+"</span></div></div>";
   $("period-chart").querySelectorAll("[data-period]").forEach(button=>button.addEventListener("click",()=>{ $("period").value=button.dataset.period;$("spend-window").value="period";renderAll(); }));
 }
 function renderAssets() {
@@ -274,10 +278,26 @@ function renderBudget() {
   $("budget-income").textContent=fmt(b.income);$("budget-expenses").textContent=fmt(b.expenses);$("budget-surplus").textContent=fmt(b.surplus);
   const categories=[{label:"Housing",value:b.housing},{label:"Routine",value:b.routine},{label:"Other regular",value:b.other},{label:"Planned events",value:b.events}].filter(x=>Number.isFinite(x.value)&&x.value!==0);
   $("budget-categories").innerHTML=barRows(categories,b.expenses,{colors:["gold","slate","blue","coral"]})+"<div class='summary-total'><span>Total planned expenses</span><strong>"+fmt(b.expenses)+"</strong></div>";
-  $("budget-actual").innerHTML=Number.isFinite(b.actual) ? "<div class='detail-line'><span>Actual savings</span><strong>"+fmt(b.actual)+"</strong></div><div class='detail-line'><span>Planned surplus</span><strong>"+fmt(b.surplus)+"</strong></div><div class='detail-line'><span>Actual vs budget</span><strong>"+fmt(b.variance)+"</strong></div>" : "<div class='status-box'>No actual result has been entered in the Budget sheet for "+esc(monthLabel(b.month))+".</div>";
+  const saving=LiquidityModel.forecast(periods,budgetRows,budgetPlans).savings.find(x=>x.month===monthKey(b.month));
+  $("budget-actual").innerHTML=Number.isFinite(saving?.actual) ? "<div class='detail-line'><span>Actual savings</span><strong>"+fmt(saving.actual)+"</strong></div><div class='detail-line'><span>Planned surplus</span><strong>"+fmt(b.surplus)+"</strong></div><div class='detail-line'><span>Actual vs budget</span><strong>"+fmt(saving.variance)+"</strong></div><div class='detail-line'><span>Status</span><strong>"+esc(saving.status)+"</strong></div>" : "<div class='status-box'>Actual savings pending for "+esc(monthLabel(b.month))+".</div>";
   $("budget-rows").innerHTML=budgetRows.map((x,i)=>"<tr class='clickable' data-budget='"+i+"'><td>"+esc(monthLabel(x.month))+"</td><td class='numeric'>"+fmt(x.income)+"</td><td class='numeric'>"+fmt(x.housing)+"</td><td class='numeric'>"+fmt(x.routine)+"</td><td class='numeric'>"+fmt(x.events)+"</td><td class='numeric'>"+fmt(x.expenses)+"</td><td class='numeric'>"+fmt(x.surplus)+"</td></tr>").join("");
   $("budget-rows").querySelectorAll("[data-budget]").forEach(row=>row.addEventListener("click",()=>{$("budget-month").value=row.dataset.budget;$("plan-scope").value="month";renderBudget();}));
   renderBudgetPlans();
+}
+function renderLiquidity() {
+  const model=LiquidityModel.forecast(periods,budgetRows,budgetPlans);
+  $("liquidity-current").textContent=fmt(model.opening);
+  $("liquidity-asof").textContent="As of "+dateLabel(model.asOf);
+  $("liquidity-projected").textContent=fmt(model.rows.at(-1)?.ending ?? model.opening);
+  $("liquidity-projection-date").textContent=model.rows.length ? "Through "+model.rows.at(-1).month : "No upcoming Budget months";
+  $("liquidity-rows").innerHTML=model.rows.map(x=>"<tr><td>"+esc(x.month)+" <span class='tag'>Forecast</span></td><td class='numeric'>"+fmt(x.beginning)+"</td><td class='numeric'>"+fmt(x.regular)+"</td><td class='numeric'>"+fmt(x.oneOff)+"</td><td class='numeric'>"+fmt(x.ending)+"</td></tr>").join("") || "<tr><td colspan='5' class='empty'>No upcoming Budget months.</td></tr>";
+  const chartRows=[{month:monthKey(model.asOf),ending:model.opening},...model.rows];
+  const values=chartRows.map(x=>x.ending), low=Math.min(...values), high=Math.max(...values), span=high-low||1;
+  const points=chartRows.map((x,i)=>`${20+i*760/Math.max(1,chartRows.length-1)},${155-(x.ending-low)/span*125}`).join(" ");
+  $("liquidity-chart").innerHTML="<svg viewBox='0 0 800 180' role='img' aria-label='Monthly projected ending liquidity'><polyline points='"+points+"' fill='none' stroke='#14816c' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg><div class='chart-labels'><span>"+esc(chartRows[0].month)+" Actual</span><span>"+esc(chartRows.at(-1).month)+" Forecast</span></div>";
+  const shown=model.savings.filter(x=>x.month>=monthKey(model.asOf)).slice(0,12);
+  $("liquidity-savings").innerHTML=shown.map(x=>"<tr><td>"+esc(x.month)+"</td><td class='numeric'>"+fmt(x.target)+"</td><td class='numeric'>"+(Number.isFinite(x.actual)?fmt(x.actual):"Pending")+"</td><td class='numeric'>"+fmt(x.variance)+"</td><td>"+esc(x.status)+"</td></tr>").join("");
+  $("liquidity-plans").innerHTML=sourceFailures["Future One-off Plans"] ? "<tr><td colspan='4' class='empty'>Plan detail unavailable; forecast uses Budget Planned Events.</td></tr>" : model.details.map(x=>"<tr><td>"+esc(dateLabel(x.date))+"</td><td>"+esc(x.event)+"</td><td>"+esc(x.category)+"</td><td class='numeric'>"+fmt(-x.estimated)+"</td></tr>").join("") || "<tr><td colspan='4' class='empty'>No included future one-off plans.</td></tr>";
 }
 function renderBudgetPlans() {
   if(sourceFailures["Future One-off Plans"]) {$("plan-count").textContent="Incomplete";$("plan-rows").innerHTML="<tr><td colspan='8' class='empty'>Future One-off Plans unavailable: "+esc(sourceFailures["Future One-off Plans"])+"</td></tr>";return;}

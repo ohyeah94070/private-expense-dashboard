@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#101d24"><title>Finance Review</title>
-<link rel="stylesheet" href="./style.css?v=20261104-2">
+<link rel="stylesheet" href="./style.css?v=20261110-1">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="./statement-model.js?v=20261104-2" defer></script>
 <script src="./source-model.js?v=20261104-5" defer></script>
 <script src="./source-ranges.js?v=20261104-1" defer></script>
-<script src="./app.js?v=20261104-5" defer></script>
+<script src="./liquidity-model.js?v=20261110-1" defer></script>
+<script src="./app.js?v=20261110-1" defer></script>
 </head>
 <body>
 <div class="app-shell">
@@ -17,12 +18,13 @@
 <section id="setup" class="setup"><div><p class="kicker">PRIVATE SHEET CONNECTION</p><h1>Connect Google Sheets</h1><p>Sign in with the Google account that can read your private Finance Sheet.</p></div><div class="setup-fields"><button id="connect" class="button primary">Connect Google Account</button><p id="connect-error" class="error" role="alert"></p></div></section>
 <div id="dashboard" hidden>
 <div class="page-heading"><div><p class="kicker">PERSONAL FINANCE</p><h1>Financial overview</h1><p id="period-subtitle" class="muted"></p></div><div class="select-wrap"><label for="period">Balance snapshot</label><select id="period"></select></div></div>
-<nav class="tabs" aria-label="Dashboard sections"><button class="tab active" data-tab="overview" type="button">Overview</button><button class="tab" data-tab="assets" type="button">Assets & liabilities</button><button class="tab" data-tab="spending" type="button">Income & spending</button><button class="tab" data-tab="budget" type="button">Budget planner</button></nav>
+<nav class="tabs" aria-label="Dashboard sections"><button class="tab active" data-tab="overview" type="button">Overview</button><button class="tab" data-tab="assets" type="button">Assets & liabilities</button><button class="tab" data-tab="spending" type="button">Income & spending</button><button class="tab" data-tab="budget" type="button">Budget planner</button><button class="tab" data-tab="liquidity" type="button">Liquidity Planner</button></nav>
 <p id="data-status" class="status-box" role="status"></p>
 <section id="view-overview" class="view">
 <div class="metric-grid"><article class="metric"><span>Period income</span><strong id="overview-income">—</strong><small>Statement income, including investment and MPF</small></article><article class="metric"><span>Period expense</span><strong id="expense">—</strong><small id="expense-caption"></small></article><article class="metric accent"><span>Net worth change</span><strong id="overview-net-change">—</strong><small>Change since prior balance snapshot</small></article><article class="metric"><span>Salary less expense</span><strong id="overview-core-savings">—</strong><small>Excludes investment, MPF and other income</small></article></div>
 <div class="panel-grid"><article class="panel"><div class="panel-head"><div><p class="kicker">BALANCE SHEET</p><h2>Asset allocation</h2></div><button class="text-button" data-go="assets">Explore assets →</button></div><div id="allocation-summary"></div></article><article class="panel"><div class="panel-head"><div><p class="kicker">STATEMENT RECONCILIATION</p><h2>Expense components</h2></div><button class="text-button" data-go="spending">Explore spending →</button></div><div id="expense-summary"></div></article></div>
 <article class="panel"><div class="panel-head"><div><p class="kicker">PERIOD COMPARISON</p><h2>Spending across snapshots</h2></div><span class="muted small">Periods have different lengths</span></div><div id="period-chart" class="period-chart"></div></article>
+<article class="panel"><div class="panel-head"><div><p class="kicker">HISTORY</p><h2>Net worth across snapshots</h2></div></div><div id="net-worth-history" class="period-chart"></div></article>
 </section>
 <section id="view-assets" class="view" hidden>
 <div class="section-head"><div><p class="kicker">BALANCE SHEET</p><h2>Assets & liabilities</h2></div><span id="asset-asof" class="muted"></span></div>
@@ -45,6 +47,12 @@
 <div class="panel-grid"><article class="panel"><div class="panel-head"><div><p class="kicker">MONTHLY PLAN</p><h2>Expense categories</h2></div></div><div id="budget-categories"></div></article><article class="panel"><div class="panel-head"><div><p class="kicker">ACTUAL VS PLAN</p><h2>Reconciliation status</h2></div></div><div id="budget-actual"></div></article></div>
 <article class="panel"><div class="panel-head"><div><p class="kicker">FUTURE ONE-OFF PLANS</p><h2>Events & one-off expenses</h2></div><span id="plan-count" class="muted small"></span></div><div class="filter-row"><select id="plan-scope" aria-label="Filter planned event month"><option value="all">All planned months</option><option value="month">Selected budget month</option></select><input id="plan-search" type="search" placeholder="Search event or note" aria-label="Search one-off plans"><select id="plan-category" aria-label="Filter plan category"><option value="">All categories</option></select><select id="plan-status" aria-label="Filter plan inclusion"><option value="">Included and excluded</option><option value="included">Included in budget</option><option value="excluded">Excluded from budget</option></select><button id="clear-plans" class="button light">Clear filters</button></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Event</th><th>Category</th><th class="numeric">Estimated cost</th><th class="numeric">Paid / saved</th><th class="numeric">Remaining</th><th>Included?</th><th>Notes</th></tr></thead><tbody id="plan-rows"></tbody></table></div><p class="data-note">The monthly Planned Events figure above comes directly from the Budget sheet. This list shows the source plans and does not recalculate the monthly budget.</p></article>
 <article class="panel"><div class="panel-head"><div><p class="kicker">UPCOMING MONTHS</p><h2>Budget schedule</h2></div></div><div class="table-wrap"><table><thead><tr><th>Month</th><th class="numeric">Income</th><th class="numeric">Housing</th><th class="numeric">Routine</th><th class="numeric">Events</th><th class="numeric">Expenses</th><th class="numeric">Surplus</th></tr></thead><tbody id="budget-rows"></tbody></table></div></article>
+</section>
+<section id="view-liquidity" class="view" hidden>
+<div class="section-head"><div><p class="kicker">CASH PLANNING</p><h2>Liquidity Planner</h2></div><span id="liquidity-asof" class="muted"></span></div>
+<div class="metric-grid three"><article class="metric accent"><span>Current liquidity</span><strong id="liquidity-current">—</strong><small>HKD-denominated cash plus credit card balances converted to HKD</small></article><article class="metric"><span>Projected ending liquidity</span><strong id="liquidity-projected">—</strong><small id="liquidity-projection-date"></small></article></div>
+<article class="panel"><div class="panel-head"><div><p class="kicker">FORECAST</p><h2>Monthly liquidity</h2></div></div><div id="liquidity-chart" class="liquidity-chart"></div><div class="table-wrap"><table><thead><tr><th>Month</th><th class="numeric">Beginning liquidity</th><th class="numeric">Budgeted net cash flow</th><th class="numeric">One-off net cash flow</th><th class="numeric">Ending liquidity</th></tr></thead><tbody id="liquidity-rows"></tbody></table></div><p class="data-note">Forecast starts from the latest completed Statement snapshot. Regular cash flow excludes Budget planned events; included one-off estimates appear once in the separate column. Investment valuation changes are excluded.</p></article>
+<div class="panel-grid"><article class="panel"><div class="panel-head"><div><p class="kicker">SAVINGS</p><h2>Budget vs actual savings</h2></div></div><div class="table-wrap"><table><thead><tr><th>Month</th><th class="numeric">Target</th><th class="numeric">Actual</th><th class="numeric">Gap</th><th>Status</th></tr></thead><tbody id="liquidity-savings"></tbody></table></div></article><article class="panel"><div class="panel-head"><div><p class="kicker">INCLUDED PLANS</p><h2>Future one-off plans</h2></div></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Event</th><th>Category</th><th class="numeric">Cash flow</th></tr></thead><tbody id="liquidity-plans"></tbody></table></div></article></div>
 </section>
 </div>
 </main>
