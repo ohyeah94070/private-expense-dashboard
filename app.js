@@ -71,8 +71,8 @@ $("plan-search").addEventListener("input",renderBudgetPlans);
 $("plan-category").addEventListener("change",renderBudgetPlans);
 $("plan-status").addEventListener("change",renderBudgetPlans);
 $("clear-plans").addEventListener("click",() => { $("plan-scope").value="all"; $("plan-search").value=""; $("plan-category").value=""; $("plan-status").value=""; renderBudgetPlans(); });
-$("extra-outflow").addEventListener("input",renderLiquidityScenario);
-$("effective-month").addEventListener("change",renderLiquidityScenario);
+$("extra-outflow").addEventListener("input",()=>renderLiquidityScenario());
+$("effective-month").addEventListener("change",()=>renderLiquidityScenario());
 window.addEventListener?.("resize",()=>{if(activeTab==="liquidity"&&periods.length)renderLiquidityScenario();});
 
 function error(message) { $("connect-error").textContent=message; }
