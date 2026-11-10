@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#101d24"><title>Finance Review</title>
-<link rel="stylesheet" href="./style.css?v=20261110-2">
+<link rel="stylesheet" href="./style.css?v=20261110-3">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="./statement-model.js?v=20261104-2" defer></script>
 <script src="./source-model.js?v=20261104-5" defer></script>
 <script src="./source-ranges.js?v=20261104-1" defer></script>
 <script src="./liquidity-model.js?v=20261110-1" defer></script>
-<script src="./liquidity-chart.js?v=20261110-1" defer></script>
-<script src="./app.js?v=20261110-3" defer></script>
+<script src="./liquidity-chart.js?v=20261110-2" defer></script>
+<script src="./app.js?v=20261110-4" defer></script>
 </head>
 <body>
 <div class="app-shell">
@@ -54,7 +54,7 @@
 <div class="metric-grid three"><article class="metric accent"><span>Current liquidity</span><strong id="liquidity-current">—</strong><small>HKD-denominated cash plus credit card balances converted to HKD</small></article><article class="metric"><span>Projected ending liquidity</span><strong id="liquidity-projected">—</strong><small id="liquidity-projection-date"></small></article></div>
 <article class="panel liquidity-forecast"><div class="panel-head"><div><p class="kicker">FORECAST & STRESS TEST</p><h2>Monthly liquidity</h2></div><span class="muted small">Changes here stay in this browser</span></div>
 <div class="lc-controls"><div class="lc-slider"><div class="lc-control-heading"><label for="extra-outflow">Extra Cash Outflow</label><strong id="extra-outflow-value">HK$0</strong></div><input id="extra-outflow" type="range" min="0" max="100000" step="1000" value="0"><div class="lc-range-labels"><span>HK$0</span><span>HK$100,000</span></div></div><div class="select-wrap"><label for="effective-month">Effective Month</label><select id="effective-month"></select></div></div>
-<div class="lc-legend"><span><i class="lc-legend-actual"></i>Actual</span><span><i class="lc-legend-baseline"></i>Baseline Forecast</span><span><i class="lc-legend-scenario"></i>Stress Scenario</span><span><i class="lc-legend-negative"></i>Below zero</span></div>
+<div class="lc-chart-toolbar"><div class="lc-legend"><span><i class="lc-legend-actual"></i>Actual</span><span><i class="lc-legend-baseline"></i>Baseline Forecast</span><span><i class="lc-legend-scenario"></i>Stress Scenario</span><span><i class="lc-legend-negative"></i>Below zero</span></div><div class="lc-range-switch" role="group" aria-label="Chart period"><button type="button" data-liquidity-range="3" aria-pressed="false">3M</button><button type="button" data-liquidity-range="6" aria-pressed="false">6M</button><button type="button" data-liquidity-range="12" aria-pressed="true">12M</button></div></div>
 <div id="liquidity-chart" class="lc-chart"></div>
 <div class="lc-summary"><div><span>Projected Ending Liquidity</span><strong id="baseline-ending">—</strong></div><div><span>Adjusted Ending Liquidity</span><strong id="adjusted-ending">—</strong></div><div id="minimum-liquidity-card"><span>Minimum Liquidity</span><strong id="minimum-liquidity">—</strong></div></div>
 <div class="table-wrap"><table><thead><tr><th>Month</th><th class="numeric">Scenario beginning</th><th class="numeric">Budgeted net cash flow</th><th class="numeric">One-off net cash flow</th><th class="numeric">Baseline ending</th><th class="numeric">Scenario ending</th></tr></thead><tbody id="liquidity-rows"></tbody></table></div><p class="data-note">Forecast starts from the latest completed Statement snapshot. Regular cash flow excludes Budget planned events; included one-off estimates appear once. Investment valuation changes are excluded. The stress test does not change your Sheet.</p></article>

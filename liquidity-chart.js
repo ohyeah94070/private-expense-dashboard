@@ -10,15 +10,19 @@ const LiquidityChart = (() => {
   }
   function niceStep(raw) {
     const power = 10 ** Math.floor(Math.log10(raw || 1));
-    return [1,2,5,10].map(x=>x*power).find(x=>x>=raw) || 10*power;
+    return [1,2,2.5,5,10].map(x=>x*power).find(x=>x>=raw) || 10*power;
   }
-  function chart(model, rows, viewportWidth=820) {
-    const data=[{month:new Date(Date.UTC(1899,11,30)+model.asOf*86400000).toISOString().slice(0,7),ending:model.opening,adjusted:model.opening,actual:true},...rows];
-    const width=Math.max(820, viewportWidth, 130 + (data.length-1)*34), height=344;
+  function chart(model, rows, viewportWidth=820, months=12) {
+    const visibleRows=rows.slice(0,[3,6,12].includes(months)?months:12);
+    const data=[{month:new Date(Date.UTC(1899,11,30)+model.asOf*86400000).toISOString().slice(0,7),ending:model.opening,adjusted:model.opening,actual:true},...visibleRows];
+    const width=Math.max(640, viewportWidth, 130 + (data.length-1)*55), height=344;
     const left=82,right=28,top=28,bottom=50,plotWidth=width-left-right,plotHeight=height-top-bottom;
     const values=data.flatMap(x=>[x.ending,x.adjusted]);
-    const min=Math.min(0,...values),max=Math.max(0,...values),step=niceStep((max-min)/4);
-    const low=Math.floor(min/step)*step,high=Math.max(step,Math.ceil(max/step)*step);
+    const min=Math.min(...values),max=Math.max(...values);
+    const padding=Math.max((max-min)*.12,Math.max(Math.abs(min),Math.abs(max),1)*.02,1000);
+    const paddedLow=min-padding,paddedHigh=Math.max(max+padding,min<0?padding:-Infinity);
+    const step=niceStep((paddedHigh-paddedLow)/6);
+    const low=Math.floor(paddedLow/step)*step,high=Math.ceil(paddedHigh/step)*step;
     const x=i=>left+i*plotWidth/Math.max(1,data.length-1);
     const y=v=>top+(high-v)/(high-low)*plotHeight;
     const path=key=>data.map((row,i)=>(i?"L":"M")+x(i).toFixed(1)+" "+y(row[key]).toFixed(1)).join(" ");
@@ -27,7 +31,8 @@ const LiquidityChart = (() => {
     const every=Math.max(1,Math.ceil(data.length/10));
     const labels=data.map((row,i)=>i===0||i===data.length-1||i%every===0?"<text class='lc-month' x='"+x(i)+"' y='"+(height-19)+"' text-anchor='middle'>"+escape(row.month)+"</text>":"").join("");
     const points=data.map((row,i)=>"<g class='lc-point"+(row.actual?" lc-actual":"")+(row.adjusted<0?" lc-below":"")+"' data-point='"+i+"' tabindex='0' role='button' aria-label='"+escape(row.month+" "+(row.actual?"actual":"forecast")+" liquidity "+money(row.adjusted))+"'><circle class='lc-dot' cx='"+x(i)+"' cy='"+y(row.adjusted)+"' r='"+(row.actual?6:4)+"'/><circle class='lc-hit' cx='"+x(i)+"' cy='"+y(row.adjusted)+"' r='15'/></g>").join("");
-    const svg="<svg viewBox='0 0 "+width+" "+height+"' width='"+width+"' height='"+height+"' role='img' aria-label='Actual liquidity and baseline and stress forecasts by month'><defs><clipPath id='lc-negative-clip'><rect x='0' y='"+y(0)+"' width='"+width+"' height='"+(height-y(0))+"'/></clipPath></defs>"+grid+"<path class='lc-baseline' d='"+path("ending")+"'/><path class='lc-scenario' d='"+path("adjusted")+"'/><path class='lc-scenario-negative' clip-path='url(#lc-negative-clip)' d='"+path("adjusted")+"'/>"+labels+points+"</svg>";
+    const zeroY=Math.max(top,Math.min(height-bottom,y(0)));
+    const svg="<svg viewBox='0 0 "+width+" "+height+"' width='"+width+"' height='"+height+"' role='img' aria-label='Actual liquidity and baseline and stress forecasts by month'><defs><clipPath id='lc-negative-clip'><rect x='0' y='"+zeroY+"' width='"+width+"' height='"+(height-bottom-zeroY)+"'/></clipPath></defs>"+grid+"<path class='lc-baseline' d='"+path("ending")+"'/><path class='lc-scenario' d='"+path("adjusted")+"'/><path class='lc-scenario-negative' clip-path='url(#lc-negative-clip)' d='"+path("adjusted")+"'/>"+labels+points+"</svg>";
     return "<div class='lc-scroll'><div class='lc-canvas' style='width:"+width+"px'>"+svg+"<div class='lc-tooltip' hidden></div></div></div>";
   }
   function tooltip(model, rows, index) {

@@ -21,7 +21,7 @@ const fmtOriginal = (value,ccy) => {
 };
 const nowHK = new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Hong_Kong",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
 const dayNow = Math.floor((Date.parse(nowHK + "T00:00:00Z") - Date.UTC(1899,11,30))/86400000);
-let tokenClient, accessToken, raw = {}, periods = [], budgetRows = [], budgetPlans = [], events = [], incomeEntries = [], sourceFailures = {}, activeTab = "overview", loadEpoch = 0;
+let tokenClient, accessToken, raw = {}, periods = [], budgetRows = [], budgetPlans = [], events = [], incomeEntries = [], sourceFailures = {}, activeTab = "overview", loadEpoch = 0, liquidityChartMonths = 12;
 
 $("connect").addEventListener("click", () => {
   $("connect-error").textContent = "";
@@ -73,6 +73,11 @@ $("plan-status").addEventListener("change",renderBudgetPlans);
 $("clear-plans").addEventListener("click",() => { $("plan-scope").value="all"; $("plan-search").value=""; $("plan-category").value=""; $("plan-status").value=""; renderBudgetPlans(); });
 $("extra-outflow").addEventListener("input",()=>renderLiquidityScenario());
 $("effective-month").addEventListener("change",()=>renderLiquidityScenario());
+document.querySelectorAll("[data-liquidity-range]").forEach(button=>button.addEventListener("click",()=>{
+  liquidityChartMonths=Number(button.dataset.liquidityRange);
+  document.querySelectorAll("[data-liquidity-range]").forEach(option=>option.setAttribute("aria-pressed",String(option===button)));
+  renderLiquidityScenario();
+}));
 window.addEventListener?.("resize",()=>{if(activeTab==="liquidity"&&periods.length)renderLiquidityScenario();});
 
 function error(message) { $("connect-error").textContent=message; }
@@ -315,7 +320,7 @@ function renderLiquidityScenario(existingModel) {
   $("minimum-liquidity").textContent=fmt(minimum);
   $("minimum-liquidity-card").classList.toggle("lc-warning",minimum<0);
   $("liquidity-rows").innerHTML=rows.map(x=>"<tr><td>"+esc(x.month)+" <span class='tag'>Forecast</span></td><td class='numeric'>"+fmt(x.adjustedBeginning)+"</td><td class='numeric'>"+fmt(x.regular)+"</td><td class='numeric'>"+fmt(x.oneOff)+"</td><td class='numeric'>"+fmt(x.ending)+"</td><td class='numeric "+(x.adjusted<0?"negative":"")+"'>"+fmt(x.adjusted)+"</td></tr>").join("") || "<tr><td colspan='6' class='empty'>No upcoming Budget months.</td></tr>";
-  $("liquidity-chart").innerHTML=LiquidityChart.chart(model,rows,$("liquidity-chart").clientWidth-2);
+  $("liquidity-chart").innerHTML=LiquidityChart.chart(model,rows,$("liquidity-chart").clientWidth-2,liquidityChartMonths);
   const canvas=$("liquidity-chart").querySelector(".lc-canvas"),tip=$("liquidity-chart").querySelector(".lc-tooltip");
   const show=point=>{
     const index=Number(point.dataset.point),circle=point.querySelector(".lc-hit");
