@@ -71,12 +71,16 @@ $("plan-search").addEventListener("input",renderBudgetPlans);
 $("plan-category").addEventListener("change",renderBudgetPlans);
 $("plan-status").addEventListener("change",renderBudgetPlans);
 $("clear-plans").addEventListener("click",() => { $("plan-scope").value="all"; $("plan-search").value=""; $("plan-category").value=""; $("plan-status").value=""; renderBudgetPlans(); });
+$("extra-outflow").addEventListener("input",renderLiquidityScenario);
+$("effective-month").addEventListener("change",renderLiquidityScenario);
+window.addEventListener?.("resize",()=>{if(activeTab==="liquidity"&&periods.length)renderLiquidityScenario();});
 
 function error(message) { $("connect-error").textContent=message; }
 function setTab(tab) {
   activeTab = tab;
   document.querySelectorAll(".tab").forEach(button => button.classList.toggle("active",button.dataset.tab===tab));
   document.querySelectorAll(".view").forEach(view => view.hidden = view.id !== "view-"+tab);
+  if (tab==="liquidity"&&periods.length) renderLiquidityScenario();
 }
 async function loadData() {
   const epoch = loadEpoch, token = accessToken;
@@ -290,14 +294,43 @@ function renderLiquidity() {
   $("liquidity-asof").textContent="As of "+dateLabel(model.asOf);
   $("liquidity-projected").textContent=fmt(model.rows.at(-1)?.ending ?? model.opening);
   $("liquidity-projection-date").textContent=model.rows.length ? "Through "+model.rows.at(-1).month : "No upcoming Budget months";
-  $("liquidity-rows").innerHTML=model.rows.map(x=>"<tr><td>"+esc(x.month)+" <span class='tag'>Forecast</span></td><td class='numeric'>"+fmt(x.beginning)+"</td><td class='numeric'>"+fmt(x.regular)+"</td><td class='numeric'>"+fmt(x.oneOff)+"</td><td class='numeric'>"+fmt(x.ending)+"</td></tr>").join("") || "<tr><td colspan='5' class='empty'>No upcoming Budget months.</td></tr>";
-  const chartRows=[{month:monthKey(model.asOf),ending:model.opening},...model.rows];
-  const values=chartRows.map(x=>x.ending), low=Math.min(...values), high=Math.max(...values), span=high-low||1;
-  const points=chartRows.map((x,i)=>`${20+i*760/Math.max(1,chartRows.length-1)},${155-(x.ending-low)/span*125}`).join(" ");
-  $("liquidity-chart").innerHTML="<svg viewBox='0 0 800 180' role='img' aria-label='Monthly projected ending liquidity'><polyline points='"+points+"' fill='none' stroke='#14816c' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/></svg><div class='chart-labels'><span>"+esc(chartRows[0].month)+" Actual</span><span>"+esc(chartRows.at(-1).month)+" Forecast</span></div>";
+  const oldMonth=$("effective-month").value;
+  $("effective-month").innerHTML=model.rows.map(x=>"<option value='"+esc(x.month)+"'>"+esc(x.month)+"</option>").join("");
+  $("effective-month").value=model.rows.some(x=>x.month===oldMonth)?oldMonth:model.rows[0]?.month||"";
+  $("effective-month").disabled=!model.rows.length;
+  $("extra-outflow").disabled=!model.rows.length;
+  renderLiquidityScenario(model);
   const shown=model.savings.filter(x=>x.month>=monthKey(model.asOf)).slice(0,12);
   $("liquidity-savings").innerHTML=shown.map(x=>"<tr><td>"+esc(x.month)+"</td><td class='numeric'>"+fmt(x.target)+"</td><td class='numeric'>"+(Number.isFinite(x.actual)?fmt(x.actual):"Pending")+"</td><td class='numeric'>"+fmt(x.variance)+"</td><td>"+esc(x.status)+"</td></tr>").join("");
   $("liquidity-plans").innerHTML=sourceFailures["Future One-off Plans"] ? "<tr><td colspan='4' class='empty'>Plan detail unavailable; forecast uses Budget Planned Events.</td></tr>" : model.details.map(x=>"<tr><td>"+esc(dateLabel(x.date))+"</td><td>"+esc(x.event)+"</td><td>"+esc(x.category)+"</td><td class='numeric'>"+fmt(-x.estimated)+"</td></tr>").join("") || "<tr><td colspan='4' class='empty'>No included future one-off plans.</td></tr>";
+}
+function renderLiquidityScenario(existingModel) {
+  const model=existingModel||LiquidityModel.forecast(periods,budgetRows,budgetPlans);
+  const amount=Number($("extra-outflow").value),month=$("effective-month").value;
+  const rows=LiquidityChart.scenario(model,amount,month);
+  $("extra-outflow-value").textContent=fmt(amount);
+  $("baseline-ending").textContent=fmt(rows.at(-1)?.ending ?? model.opening);
+  $("adjusted-ending").textContent=fmt(rows.at(-1)?.adjusted ?? model.opening);
+  const minimum=rows.length?Math.min(...rows.map(x=>x.adjusted)):model.opening;
+  $("minimum-liquidity").textContent=fmt(minimum);
+  $("minimum-liquidity-card").classList.toggle("lc-warning",minimum<0);
+  $("liquidity-rows").innerHTML=rows.map(x=>"<tr><td>"+esc(x.month)+" <span class='tag'>Forecast</span></td><td class='numeric'>"+fmt(x.adjustedBeginning)+"</td><td class='numeric'>"+fmt(x.regular)+"</td><td class='numeric'>"+fmt(x.oneOff)+"</td><td class='numeric'>"+fmt(x.ending)+"</td><td class='numeric "+(x.adjusted<0?"negative":"")+"'>"+fmt(x.adjusted)+"</td></tr>").join("") || "<tr><td colspan='6' class='empty'>No upcoming Budget months.</td></tr>";
+  $("liquidity-chart").innerHTML=LiquidityChart.chart(model,rows,$("liquidity-chart").clientWidth-2);
+  const canvas=$("liquidity-chart").querySelector(".lc-canvas"),tip=$("liquidity-chart").querySelector(".lc-tooltip");
+  const show=point=>{
+    const index=Number(point.dataset.point),circle=point.querySelector(".lc-hit");
+    tip.innerHTML=LiquidityChart.tooltip(model,rows,index);
+    tip.style.left=Math.min(Number(circle.getAttribute("cx"))+18,canvas.offsetWidth-260)+"px";
+    tip.style.top=Math.max(8,Number(circle.getAttribute("cy"))-145)+"px";
+    tip.hidden=false;
+  };
+  $("liquidity-chart").querySelectorAll(".lc-point").forEach(point=>{
+    point.addEventListener("pointerenter",()=>show(point));
+    point.addEventListener("focus",()=>show(point));
+    point.addEventListener("click",()=>show(point));
+    point.addEventListener("pointerleave",()=>{tip.hidden=true});
+    point.addEventListener("blur",()=>{tip.hidden=true});
+  });
 }
 function renderBudgetPlans() {
   if(sourceFailures["Future One-off Plans"]) {$("plan-count").textContent="Incomplete";$("plan-rows").innerHTML="<tr><td colspan='8' class='empty'>Future One-off Plans unavailable: "+esc(sourceFailures["Future One-off Plans"])+"</td></tr>";return;}

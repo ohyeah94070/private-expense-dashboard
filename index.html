@@ -9,7 +9,8 @@
 <script src="./source-model.js?v=20261104-5" defer></script>
 <script src="./source-ranges.js?v=20261104-1" defer></script>
 <script src="./liquidity-model.js?v=20261110-1" defer></script>
-<script src="./app.js?v=20261110-1" defer></script>
+<script src="./liquidity-chart.js?v=20261110-1" defer></script>
+<script src="./app.js?v=20261110-2" defer></script>
 </head>
 <body>
 <div class="app-shell">
@@ -51,7 +52,12 @@
 <section id="view-liquidity" class="view" hidden>
 <div class="section-head"><div><p class="kicker">CASH PLANNING</p><h2>Liquidity Planner</h2></div><span id="liquidity-asof" class="muted"></span></div>
 <div class="metric-grid three"><article class="metric accent"><span>Current liquidity</span><strong id="liquidity-current">—</strong><small>HKD-denominated cash plus credit card balances converted to HKD</small></article><article class="metric"><span>Projected ending liquidity</span><strong id="liquidity-projected">—</strong><small id="liquidity-projection-date"></small></article></div>
-<article class="panel"><div class="panel-head"><div><p class="kicker">FORECAST</p><h2>Monthly liquidity</h2></div></div><div id="liquidity-chart" class="liquidity-chart"></div><div class="table-wrap"><table><thead><tr><th>Month</th><th class="numeric">Beginning liquidity</th><th class="numeric">Budgeted net cash flow</th><th class="numeric">One-off net cash flow</th><th class="numeric">Ending liquidity</th></tr></thead><tbody id="liquidity-rows"></tbody></table></div><p class="data-note">Forecast starts from the latest completed Statement snapshot. Regular cash flow excludes Budget planned events; included one-off estimates appear once in the separate column. Investment valuation changes are excluded.</p></article>
+<article class="panel liquidity-forecast"><div class="panel-head"><div><p class="kicker">FORECAST & STRESS TEST</p><h2>Monthly liquidity</h2></div><span class="muted small">Changes here stay in this browser</span></div>
+<div class="lc-controls"><div class="lc-slider"><div class="lc-control-heading"><label for="extra-outflow">Extra Cash Outflow</label><strong id="extra-outflow-value">HK$0</strong></div><input id="extra-outflow" type="range" min="0" max="100000" step="1000" value="0"><div class="lc-range-labels"><span>HK$0</span><span>HK$100,000</span></div></div><div class="select-wrap"><label for="effective-month">Effective Month</label><select id="effective-month"></select></div></div>
+<div class="lc-legend"><span><i class="lc-legend-actual"></i>Actual</span><span><i class="lc-legend-baseline"></i>Baseline Forecast</span><span><i class="lc-legend-scenario"></i>Stress Scenario</span><span><i class="lc-legend-negative"></i>Below zero</span></div>
+<div id="liquidity-chart" class="lc-chart"></div>
+<div class="lc-summary"><div><span>Projected Ending Liquidity</span><strong id="baseline-ending">—</strong></div><div><span>Adjusted Ending Liquidity</span><strong id="adjusted-ending">—</strong></div><div id="minimum-liquidity-card"><span>Minimum Liquidity</span><strong id="minimum-liquidity">—</strong></div></div>
+<div class="table-wrap"><table><thead><tr><th>Month</th><th class="numeric">Scenario beginning</th><th class="numeric">Budgeted net cash flow</th><th class="numeric">One-off net cash flow</th><th class="numeric">Baseline ending</th><th class="numeric">Scenario ending</th></tr></thead><tbody id="liquidity-rows"></tbody></table></div><p class="data-note">Forecast starts from the latest completed Statement snapshot. Regular cash flow excludes Budget planned events; included one-off estimates appear once. Investment valuation changes are excluded. The stress test does not change your Sheet.</p></article>
 <div class="panel-grid"><article class="panel"><div class="panel-head"><div><p class="kicker">SAVINGS</p><h2>Budget vs actual savings</h2></div></div><div class="table-wrap"><table><thead><tr><th>Month</th><th class="numeric">Target</th><th class="numeric">Actual</th><th class="numeric">Gap</th><th>Status</th></tr></thead><tbody id="liquidity-savings"></tbody></table></div></article><article class="panel"><div class="panel-head"><div><p class="kicker">INCLUDED PLANS</p><h2>Future one-off plans</h2></div></div><div class="table-wrap"><table><thead><tr><th>Date</th><th>Event</th><th>Category</th><th class="numeric">Cash flow</th></tr></thead><tbody id="liquidity-plans"></tbody></table></div></article></div>
 </section>
 </div>
