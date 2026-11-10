@@ -9,14 +9,21 @@
   const sum = values => values.length && values.every(Number.isFinite) ? values.reduce((a, b) => a + b, 0) : null;
   function rows(data, broker = "ALL", currency = "HKD") {
     const allocation = new Map(Overview.allocation(data, "current", broker, currency).map(row => [Number(row.id.split(":")[1]), row]));
+    const combinedNavHKD = V2.nav(data, "current", "ALL", "HKD");
     return data.current.map((source, index) => ({source, index})).filter(({source}) => broker === "ALL" || source.broker === broker).map(({source, index}) => {
       const base = allocation.get(index);
       const convert = value => V2.convert(data, value, source.currency, currency, data.currentMonth);
-      return {...base, id: `holding:${index}`, quantity: source["Quantity"], avgCost: convert(source["Avg Cost"]),
+      return {...base, id: `holding:${index}`, weight: Number.isFinite(base.valueHKD) && Number.isFinite(combinedNavHKD) && combinedNavHKD > 0 ? base.valueHKD / combinedNavHKD : null,
+        quantity: source["Quantity"], avgCost: convert(source["Avg Cost"]),
         currentPrice: convert(source["Current Price"]), openPL: convert(source["Unrealized P&L"]), date: source.date};
     });
   }
-  function selectedTotal(visibleRows, selectedIds) { return Overview.selectedTotal(visibleRows, selectedIds); }
+  function selectedTotal(visibleRows, selectedIds) { return visibleRows.length ? Overview.selectedTotal(visibleRows, selectedIds) : 0; }
+  function selectedOpenPL(visibleRows, selectedIds) {
+    return visibleRows.filter(row => selectedIds.has(row.id) && Number.isFinite(row.openPL))
+      .reduce((total, row) => total + row.openPL, 0);
+  }
+  function selectedWeight(visibleRows, selectedIds) { return Overview.selectedWeight(visibleRows, selectedIds); }
   function groupKey(row) {
     const type = row.assetType.toLowerCase();
     if (type === "cash") return {key: `cash:${row.sourceCurrency}`, label: `Cash (${row.sourceCurrency})`, category: "cash"};
@@ -59,5 +66,5 @@
       negativeCashHKD, negativeCash: currency === "HKD" ? negativeCashHKD : V2.convert(data, negativeCashHKD, "HKD", "USD", data.currentMonth),
       otherNegativeHKD, otherNegative: currency === "HKD" ? otherNegativeHKD : V2.convert(data, otherNegativeHKD, "HKD", "USD", data.currentMonth), missing};
   }
-  return Object.freeze({rows, selectedTotal, groupKey, donut});
+  return Object.freeze({rows, selectedTotal, selectedOpenPL, selectedWeight, groupKey, donut});
 });

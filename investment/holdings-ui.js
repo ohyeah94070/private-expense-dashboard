@@ -20,9 +20,13 @@
   function renderTable(rows) {
     $("holdings-rows").innerHTML = rows.map(row => `<tr><td><input type="checkbox" data-holding-id="${row.id}" ${selected.has(row.id) ? "checked" : ""} aria-label="Select ${escape(row.broker)} ${escape(row.symbol || row.assetType)}"></td><td>${escape(row.broker)}</td><td>${escape(row.assetType)}</td><td><strong>${escape(row.symbol || (row.assetType.toLowerCase() === "cash" ? `Cash (${row.sourceCurrency})` : "—"))}</strong></td><td>${escape(row.sourceCurrency)}</td><td class="numeric">${number(row.quantity)}</td><td class="numeric">${money(row.avgCost, currency())}</td><td class="numeric">${money(row.currentPrice, currency())}</td><td class="numeric ${tone(row.value)}">${money(row.value, currency())}</td><td class="numeric ${tone(row.openPL)}">${money(row.openPL, currency())}</td><td class="numeric">${percent(row.weight)}</td></tr>`).join("") || '<tr><td colspan="11" class="empty">No current holdings for this broker.</td></tr>';
     $("holdings-total").textContent = money(Model.selectedTotal(rows, selected), currency());
+    const openPL = Model.selectedOpenPL(rows, selected);
+    $("holdings-open-pl-total").textContent = money(openPL, currency());
+    $("holdings-open-pl-total").className = `numeric ${tone(openPL)}`.trim();
+    $("holdings-weight-total").textContent = percent(Model.selectedWeight(rows, selected));
     $("holdings-all").checked = rows.length > 0 && rows.every(row => selected.has(row.id));
     $("holdings-all").indeterminate = rows.some(row => selected.has(row.id)) && !$("holdings-all").checked;
-    $("holdings-note").textContent = `Market value, average cost, price, and open P/L come from Current Positions. Amounts are shown in ${currency()}; quantity stays in its source unit. Weight uses full filtered NAV.`;
+    $("holdings-note").textContent = `Market value, average cost, price, and open P/L come from Current Positions. Amounts are shown in ${currency()}; quantity stays in its source unit. Each holding NAV weight uses full combined HKD portfolio NAV.`;
   }
   function renderDonut(rows) {
     const chart = Model.donut(data, rows, selected, broker(), currency());
@@ -87,6 +91,9 @@
     data = null;
     selected.clear();
     $("holdings-total").textContent = "—";
+    $("holdings-open-pl-total").textContent = "—";
+    $("holdings-open-pl-total").className = "numeric";
+    $("holdings-weight-total").textContent = "—";
     for (const id of ["holdings-rows", "holdings-chart", "holdings-legend", "holdings-offsets"]) $(id).innerHTML = "";
   }
   return Object.freeze({mount, clear, render});

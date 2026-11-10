@@ -35,7 +35,18 @@
     const labels=rows.map((row,i)=>i%Math.max(1,Math.ceil(rows.length/8))===0?`<text x="${x(i)}" y="${h-12}" text-anchor="middle">${row.month}</text>`:"").join("");
     $("nav-chart").innerHTML=`<svg viewBox="0 0 ${w} ${h}" role="img" aria-label="Monthly P and L in HKD on left axis and returns on right axis"><g class="chart-axis"><text x="${l}" y="18">P&amp;L (HKD)</text><text x="${w-r}" y="18" text-anchor="end">Return (%)</text>${[-1,0,1].map(v=>`<text x="${l-8}" y="${py(v*pl)+4}" text-anchor="end">${Math.round(v*pl).toLocaleString()}</text><text x="${w-r+8}" y="${ry(v*rl)+4}">${(v*rl*100).toFixed(1)}%</text>`).join("")}${labels}</g>${bars}${line}${dots}${ytdLine}${ytdDots}</svg><div class="value-legend">${showPnl?'<span style="color:#85b8cf">■ Monthly P&amp;L</span>　':''}${showReturn?'<span style="color:#0e7d6c">● Monthly Return</span>　':''}${showYtd?'<span style="color:#8769a8">● YTD Return</span>':''}</div>`;
   }
-  function renderAnnual(){const years=[...new Set((data.returns||[]).map(row=>row.month.slice(0,4)))].sort();$("annual-rows").innerHTML=years.map(year=>{const end=year===closedMonth().slice(0,4)?closedMonth():`${year}-12`;const result=ReturnModel.period(data,end.endsWith('-12')?'Annual':'YTD',end,closedMonth());return `<tr><td>${year} ${end.endsWith('-12')?'Annual':'YTD'}</td><td class="numeric ${result.pnl<0?'negative':result.pnl>0?'positive':''}">${money(result.pnl)}</td><td class="numeric ${result.return<0?'negative':result.return>0?'positive':''}">${percent(result.return)}</td></tr>`;}).join('');}
+  function renderAnnual(){
+    const years=[...new Set((data.returns||[]).map(row=>row.month.slice(0,4)))].sort();
+    let total=0, count=0;
+    $("annual-rows").innerHTML=years.map(year=>{
+      const end=year===closedMonth().slice(0,4)?closedMonth():`${year}-12`;
+      const result=ReturnModel.period(data,end.endsWith('-12')?'Annual':'YTD',end,closedMonth());
+      if(Number.isFinite(result.pnl)){total+=result.pnl;count++;}
+      return `<tr><td>${year} ${end.endsWith('-12')?'Annual':'YTD'}</td><td class="numeric ${result.pnl<0?'negative':result.pnl>0?'positive':''}">${money(result.pnl)}</td><td class="numeric ${result.return<0?'negative':result.return>0?'positive':''}">${percent(result.return)}</td></tr>`;
+    }).join('');
+    $("annual-pnl-total").textContent=money(count?total:null);
+    $("annual-pnl-total").className=`numeric ${count?(total<0?'negative':total>0?'positive':''):''}`.trim();
+  }
   function mount(next) {
     data=next;const months=(data.returns||[]).map(x=>x.month).filter(x=>x<=closedMonth());const last=months.at(-1)||"";
     $("return-year").innerHTML=[...new Set(months.map(x=>x.slice(0,4)))].map(y=>`<option value="${y}">${y}</option>`).join("");
@@ -43,6 +54,6 @@
     if(!bound){bound=true;for(const id of ["return-period","return-year","return-month"])$(id).addEventListener("change",renderSummary);for(const id of ["history-range","history-start","history-end","history-pnl","history-return","history-ytd","currency-select","overview-broker"])$(id).addEventListener("change",renderHistory);}
     renderSummary();renderHistory();renderAnnual();
   }
-  function clear(){data=null;for(const id of ["return-pnl","return-value","return-nav"])$(id).textContent="—";$("return-note").textContent="";}
+  function clear(){data=null;for(const id of ["return-pnl","return-value","return-nav","annual-pnl-total"])$(id).textContent="—";$("annual-pnl-total").className="numeric";$("return-note").textContent="";}
   root.ReturnUI={mount,clear};
 })(typeof window!=="undefined"?window:globalThis);
