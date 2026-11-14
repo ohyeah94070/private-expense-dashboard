@@ -11,7 +11,9 @@
   const number = value => Number.isFinite(value) ? new Intl.NumberFormat("en-HK", {maximumFractionDigits: 2}).format(value) : "—";
   const percent = value => Number.isFinite(value) ? new Intl.NumberFormat("en-HK", {style: "percent", minimumFractionDigits: 2, maximumFractionDigits: 2}).format(value) : "—";
   const tone = value => Number.isFinite(value) ? value < 0 ? "negative" : value > 0 ? "positive" : "" : "";
-  let data = null, bound = false, allocationSelection = new Set(), pnlSelection = new Set();
+  let data = null, bound = false, allocationSelection = new Set(), pnlSelection = new Set(), marketSort = {column: "", direction: 1};
+  const marketLabel = name => ({"P/E (Google)":"PE", "Drawdown From High (5Y)":"5Y Drawdown", "Max DD Strength (5Y)":"5Y Max DD Strength", "Current DD Strength":"Current DD Strength", "Strength Percentile":"Strength %ile", "Current P/E vs 10Y Median":"PE vs 10Y Median", "Price vs 50D MA":"vs 50D MA", "Price vs 100D MA":"vs 100D MA", "Price vs 200D MA":"vs 200D MA"})[name] || name;
+  const marketNumber = value => { const s=String(value ?? "").trim().replace(/,/g, ""); if (!s || s==="—") return null; const n=Number(s.replace(/%$/, "")); return Number.isFinite(n) ? n : null; };
   const currency = () => $("currency-select").value;
   const period = () => $("overview-period").value;
   const broker = () => $("overview-broker").value;
@@ -114,7 +116,18 @@
     $("performance-rows").innerHTML = rows.map(row => `<tr><td>${row.month}</td><td class="numeric">${money(row.nav, currency())}</td><td class="numeric ${tone(row.pnl)}">${money(row.pnl, currency())}</td></tr>`).join("") || '<tr><td colspan="3" class="empty">No historical months.</td></tr>';
   }
   function renderMarket() {
-    $("market-rows").innerHTML = data.market.map(row => `<tr>${V2.SCHEMAS.market.map((name, index) => `<td class="${index > 1 && index !== 7 ? "numeric" : ""}">${index === 0 ? "<strong>" : ""}${row.raw[name] == null || row.raw[name] === "" ? "—" : escape(row.raw[name])}${index === 0 ? "</strong>" : ""}</td>`).join("")}</tr>`).join("") || '<tr><td colspan="16" class="empty">No Market Watch rows.</td></tr>';
+    const columns = data.marketColumns || V2.SCHEMAS.market;
+    const query = $("market-filter").value.trim().toLowerCase();
+    const rows = data.market.filter(row => !query || columns.some(name => String(row.raw[name] ?? "").toLowerCase().includes(query)));
+    if (marketSort.column) rows.sort((a,b) => {
+      const av=a.raw[marketSort.column], bv=b.raw[marketSort.column], an=marketNumber(av), bn=marketNumber(bv);
+      if (an != null && bn != null) return (an-bn)*marketSort.direction;
+      if (av == null || av === "") return 1;
+      if (bv == null || bv === "") return -1;
+      return String(av).localeCompare(String(bv), undefined, {numeric:true})*marketSort.direction;
+    });
+    $("market-head").innerHTML = columns.map((name,index) => `<th class="${index>1&&name!=="Updated At"?"numeric":""}"><button type="button" class="sort-header" data-market-column="${escape(name)}" aria-label="Sort ${escape(name)}">${escape(marketLabel(name))} <span aria-hidden="true">${marketSort.column===name?(marketSort.direction===1?"↑":"↓"):"↕"}</span></button></th>`).join("");
+    $("market-rows").innerHTML = rows.map(row => `<tr>${columns.map((name,index) => `<td class="${index>1&&name!=="Updated At"?"numeric":""}">${index===0?"<strong>":""}${row.raw[name] == null || row.raw[name] === "" ? "—" : escape(row.raw[name])}${index===0?"</strong>":""}</td>`).join("")}</tr>`).join("") || `<tr><td colspan="${columns.length}" class="empty">No Market Watch rows.</td></tr>`;
   }
   function renderAll(reset = false) {
     if (!data) return;
@@ -138,6 +151,8 @@
       renderPerformance();
     });
     for (const id of ["history-start", "history-end", "history-pnl"]) $(id).addEventListener("change", renderPerformance);
+    $("market-filter").addEventListener("input", renderMarket);
+    $("market-head").addEventListener("click", event => { const column=event.target.closest("[data-market-column]")?.dataset.marketColumn; if (!column) return; marketSort = {column, direction:marketSort.column===column?-marketSort.direction:1}; renderMarket(); });
     if ($("allocation-all")) $("allocation-all").addEventListener("change", event => {
       const rows = Model.allocation(data, period(), broker(), currency());
       allocationSelection = event.target.checked ? new Set(rows.map(row => row.id)) : new Set();

@@ -9,7 +9,7 @@
   const RANGES = Object.freeze([
     "'Current Positions'!A1:S1000", "'Positions'!A1:Q1000",
     "'Monthly P&L'!A1:M2000", "'Trades'!A1:Q1001",
-    "'Cash Ledger'!A1:I1000", "'Market Watch'!A1:P1000", "'Monthly Return'!A1:G100"
+    "'Cash Ledger'!A1:I1000", "'Market Watch'!1:1000", "'Monthly Return'!A1:G100", "'Benchmark'!A1:S100"
   ]);
   const SCHEMAS = Object.freeze({
     current: ["As of Date", "Broker", "Asset Type", "Symbol", "Currency", "Quantity", "Avg Cost", "Current Price", "Market Value", "Unrealized P&L", "Realized P&L", "Dividend", "Interest", "Commission", "Fee", "Tax", "Other Income/Expense", "Monthly P&L", "FX to HKD"],
@@ -18,7 +18,8 @@
     trades: ["Trade Date", "Broker", "Symbol", "Action", "Quantity", "Price", "Currency", "Gross Amount", "Commission / Fee", "Net Cash Impact", "Quantity After Trade", "Avg Cost Before Trade", "Avg Cost After Trade", "Realized P&L", "Source", "Status", "Review Notes"],
     cash: ["Date", "Broker", "Event Type", "Description", "Currency", "Cash Change", "Source", "Status", "Notes"],
     market: ["Symbol", "Name", "Price", "1D %", "1W %", "52W High", "52W Low", "Updated At", "P/E (Google)", "Drawdown From High (5Y)", "Max DD Strength (5Y)", "Current DD Strength", "Strength Percentile", "Price vs 50D MA", "Price vs 100D MA", "Price vs 200D MA"],
-    returns: ["Month", "Beginning NAV (HKD)", "Ending NAV (HKD)", "Net External Flow (HKD)", "Weighted External Flow (HKD)", "Monthly P&L (HKD)", "Monthly Return (%)"]
+    returns: ["Month", "Beginning NAV (HKD)", "Ending NAV (HKD)", "Net External Flow (HKD)", "Weighted External Flow (HKD)", "Monthly P&L (HKD)", "Monthly Return (%)"],
+    benchmark: ["Month End", "QQQ Return", "VOO Return"]
   });
   const clean = value => String(value ?? "").replace(/^\uFEFF/, "").trim();
   function amount(value) {
@@ -54,14 +55,14 @@
         columns.set(name, index);
       }
     });
-    for (const name of schema) if (!columns.has(name)) throw new Error(`${label}: missing header ${name}`);
+    for (const name of (label.includes("Market Watch") ? ["Symbol"] : schema)) if (!columns.has(name)) throw new Error(`${label}: missing header ${name}`);
     return values.slice(1).flatMap((row, index) => {
       if (!Array.isArray(row)) return [];
       const first = clean(row[columns.get(schema[0])]), second = clean(row[columns.get(schema[1])]);
-      if (label.includes("Market Watch")) return first ? [Object.fromEntries(schema.map(name => [name, row[columns.get(name)] ?? null]))] : [];
+      if (label.includes("Market Watch")) return first ? [Object.fromEntries([...columns].map(([name, column]) => [name, row[column] ?? null]))] : [];
       // Formula-filled blank rows (especially Trades) may contain zeroes beyond columns A:B.
       if (!first && !second) return [];
-      if (!first || (!second && !label.includes("Monthly Return"))) throw new Error(`${label}: missing date or broker on row ${index + 2}`);
+      if (!first || (!second && !label.includes("Monthly Return") && !label.includes("Benchmark"))) throw new Error(`${label}: missing date or broker on row ${index + 2}`);
       return [Object.fromEntries(schema.map(name => [name, row[columns.get(name)] ?? null]))];
     });
   }
@@ -74,10 +75,10 @@
   };
   function parse(response) {
     const ranges = response?.valueRanges;
-    if (!Array.isArray(ranges) || ![RANGES.length, RANGES.length - 1].includes(ranges.length)) throw new Error("V2 Master: incomplete response");
-    const legacy = ranges.length === RANGES.length - 1;
-    const parsed = ranges.map((entry, index) => table(entry?.values, Object.values(SCHEMAS)[index], RANGES[index]));
-    const [c, p, m, t, l, w, r] = legacy ? [...parsed, []] : parsed;
+    if (!Array.isArray(ranges) || ranges.length < RANGES.length - 2 || ranges.length > RANGES.length) throw new Error("V2 Master: incomplete response");
+    const marketHeaders = (ranges[5]?.values?.[0] || []).map(clean).filter(Boolean);
+    const parsed = ranges.map((entry, index) => table(entry?.values, index === 5 ? marketHeaders : Object.values(SCHEMAS)[index], RANGES[index]));
+    const [c, p, m, t, l, w, r = [], b = []] = parsed;
     const current = c.map(row => ({date: requiredDate(row["As of Date"], "Current Positions"), assetType: clean(row["Asset Type"]), ...identity(row),
       ...numberFields(row, ["Quantity", "Avg Cost", "Current Price", "Market Value", "Unrealized P&L", "Realized P&L", "Dividend", "Interest", "Commission", "Fee", "Tax", "Other Income/Expense", "Monthly P&L", "FX to HKD"])}));
     const positions = p.map(row => ({date: requiredDate(row["Statement Date"], "Positions"), assetType: clean(row["Asset Type"]), ...identity(row),
@@ -94,11 +95,13 @@
       beginning: amount(row["Beginning NAV (HKD)"]), ending: amount(row["Ending NAV (HKD)"]),
       flow: amount(row["Net External Flow (HKD)"]), weightedFlow: amount(row["Weighted External Flow (HKD)"]),
       pnl: amount(row["Monthly P&L (HKD)"]), return: amount(row["Monthly Return (%)"])}));
-    const market = w.map(row => ({symbol: clean(row.Symbol), name: clean(row.Name), raw: Object.fromEntries(SCHEMAS.market.map(name => [name, row[name]])), price: amount(row.Price),
+    const market = w.map(row => ({symbol: clean(row.Symbol), name: clean(row.Name), raw: row, price: amount(row.Price),
       day: amount(row["1D %"]), week: amount(row["1W %"]), high: amount(row["52W High"]), low: amount(row["52W Low"]),
       updatedAt: clean(row["Updated At"]), pe: amount(row["P/E (Google)"])})).filter(row => row.symbol);
+    const benchmark = b.map(row => ({month: requiredDate(row["Month End"], "Benchmark").slice(0, 7),
+      qqq: amount(row["QQQ Return"]), voo: amount(row["VOO Return"])}));
     const currentMonth = current.length && current.every(row => row.date === current[0].date) ? current[0].date?.slice(0, 7) : null;
-    return {source: SHEET_ID, current, positions, pnl, trades, cash, returns, market, currentMonth};
+    return {source: SHEET_ID, current, positions, pnl, trades, cash, returns, market, marketColumns: marketHeaders, benchmark, currentMonth};
   }
   function fx(data, targetMonth) {
     if (!/^\d{4}-\d{2}$/.test(targetMonth ?? "")) return null;
